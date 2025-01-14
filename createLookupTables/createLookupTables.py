@@ -2,6 +2,9 @@ import os
 import numpy as np
 from pathlib import Path
 
+import plotLookupTablesFromFolder
+import generateHeaderFile
+
 # Generate basic waveforms
 def generate_basic_waveforms(num_points=256, amplitude=1.0):
     phase = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
@@ -14,8 +17,6 @@ def generate_basic_waveforms(num_points=256, amplitude=1.0):
         "WHITE_NOISE": generate_white_noise(num_points, amplitude),
         "PINK_NOISE": generate_pink_noise(num_points, amplitude),
     }
-    # for key in waveforms:
-    #     waveforms[key][0] = 0  # Ensure the first value is 0
     return waveforms
 
 def generate_sine_wave(samples=256, amplitude=1.0):
@@ -250,77 +251,99 @@ def save_waveform_to_csv(waveform, filename):
     np.savetxt(filename, waveform, delimiter=",", fmt="%.6f")
     print(f"Saved waveform to {filename}")
 
+def saveBasicWaveforms(waveforms, folder):
+    for name, waveform in waveforms.items():
+        save_waveform_to_csv(waveform, f"{folder + name}.csv")
+
 # Example Usage
 if __name__ == "__main__":
-    num_points = 256
 
-    # Generate basic waveforms
-    basic_waveforms = generate_basic_waveforms(num_points)
-    # Create an additive synthesis waveform (e.g., 1st, 2nd, and 3rd harmonics)
-    additive_waveform_01 = create_additive_waveform({1: 1.0, 2: 0.5, 3: 0.25}, num_points)
-    # Create a Fourier synthesis waveform with 5 harmonics
-    fourier_waveform_01 = create_fourier_waveform(5, num_points)
-
-    exponential_decay_waveform_01 = generate_exponential_decay(num_points)
-    gaussian_waveform_01 = generate_gaussian_wave(num_points)
-    pulse_train_wavwform_01 = generate_pulse_train(num_points)
-    polynomial_wave_waveform_01 = generate_polynomial_wave(num_points, [0,-2,1, -3,1])
-    square_with_duty_cycle_01 = generate_square_with_duty_cycle(num_points)
-
-    # Mix waveforms (e.g., sine and sawtooth)
-    mixed_waveform_01 = mix_waveforms(
-        {"1": basic_waveforms["SINE"], "2": basic_waveforms["SAW"]},
-        {"1": 0.7, "2": 0.3}
-    )
-    mixed_waveform_02 = mix_waveforms(
-        {"1": basic_waveforms["SINE"], "2": pulse_train_wavwform_01},
-        {"1": 0.7, "2": 0.3}
-    )
-    mixed_waveform_03 = mix_waveforms(
-        {"1": basic_waveforms["SINE"], "2": basic_waveforms["RAMP"]},
-        {"1": 0.7, "2": 0.3}
-    )
-    mixed_waveform_04 = mix_waveforms(
-        {
-            "1": basic_waveforms["SQUARE"],
-            "2": pulse_train_wavwform_01,
-            "3": polynomial_wave_waveform_01,
-            "4": exponential_decay_waveform_01 * -1,
-            "5": basic_waveforms["RAMP"],
-            "6": exponential_decay_waveform_01
-        },
-        {
-            "1": 0.05,
-            "2": 0.05,
-            "3": 0.05,
-            "4": 0.4,
-            "5": 0.1,
-            "6": 0.45
-        }
-    )
-
-    # Save all waveforms to CSV
     appFolder = Path(__file__).parent.absolute()
     folder = f"{appFolder}\\lookupTables\\"
     if not os.path.exists(folder):
         os.makedirs(folder)
+    folderBasicWaveforms = f"{folder}basicWaveforms\\"
+    if not os.path.exists(folderBasicWaveforms):
+        os.makedirs(folderBasicWaveforms)
+    folderAdditiveWaveforms = f"{folder}additiveWaveforms\\"
+    if not os.path.exists(folderAdditiveWaveforms):
+        os.makedirs(folderAdditiveWaveforms)
+    folderFourierWaveforms = f"{folder}fourierWaveforms\\"
+    if not os.path.exists(folderFourierWaveforms):
+        os.makedirs(folderFourierWaveforms)
 
-    for name, waveform in basic_waveforms.items():
-        save_waveform_to_csv(waveform, f"{folder + name}.csv")
-    save_waveform_to_csv(additive_waveform_01, f"{folder}ADDITIVE_01.csv")
-    save_waveform_to_csv(fourier_waveform_01, f"{folder}FOURIER_01.csv")
-    save_waveform_to_csv(exponential_decay_waveform_01, f"{folder}EXPONENTIAL_01.csv")
-    save_waveform_to_csv(exponential_decay_waveform_01 * -1, f"{folder}EXPONENTIAL_02.csv")
+    num_points = 256
 
-    save_waveform_to_csv(gaussian_waveform_01, f"{folder}GAUSSIAN_01.csv")
-    save_waveform_to_csv(pulse_train_wavwform_01, f"{folder}PULSE_TRAIN_01.csv")
-    save_waveform_to_csv(polynomial_wave_waveform_01, f"{folder}POLYNOMIAL_01.csv")
-    save_waveform_to_csv(square_with_duty_cycle_01, f"{folder}SQR_DC_01.csv")
+    # Generate basic waveforms
+    basic_waveforms = generate_basic_waveforms(num_points)
+    saveBasicWaveforms(basic_waveforms, folderBasicWaveforms)
 
-    save_waveform_to_csv(mixed_waveform_01, f"{folder}MIXED_01.csv")
-    save_waveform_to_csv(mixed_waveform_02, f"{folder}MIXED_02.csv")
-    save_waveform_to_csv(mixed_waveform_03, f"{folder}MIXED_03.csv")
-    save_waveform_to_csv(mixed_waveform_04, f"{folder}MIXED_04.csv")
+    # Create an additive synthesis waveform (e.g., 1st, 2nd, and 3rd harmonics)
+    additive_waveform_01 = create_additive_waveform({1: 1.0, 2: 0.5, 3: 0.25}, num_points)
+    save_waveform_to_csv(additive_waveform_01, f"{folderAdditiveWaveforms}ADDITIVE_01.csv")
 
-    generate_random(folder)
-    generate_random_mix(folder)
+    # Create a Fourier synthesis waveform with 5 harmonics
+    fourier_waveform_01 = create_fourier_waveform(5, num_points)
+    save_waveform_to_csv(fourier_waveform_01, f"{folderFourierWaveforms}FOURIER_01.csv")
+
+    # exponential_decay_waveform_01 = generate_exponential_decay(num_points)
+    # gaussian_waveform_01 = generate_gaussian_wave(num_points)
+    # pulse_train_wavwform_01 = generate_pulse_train(num_points)
+    # polynomial_wave_waveform_01 = generate_polynomial_wave(num_points, [0,-2,1, -3,1])
+    # square_with_duty_cycle_01 = generate_square_with_duty_cycle(num_points)
+
+    # # Mix waveforms (e.g., sine and sawtooth)
+    # mixed_waveform_01 = mix_waveforms(
+    #     {"1": basic_waveforms["SINE"], "2": basic_waveforms["SAW"]},
+    #     {"1": 0.7, "2": 0.3}
+    # )
+    # mixed_waveform_02 = mix_waveforms(
+    #     {"1": basic_waveforms["SINE"], "2": pulse_train_wavwform_01},
+    #     {"1": 0.7, "2": 0.3}
+    # )
+    # mixed_waveform_03 = mix_waveforms(
+    #     {"1": basic_waveforms["SINE"], "2": basic_waveforms["RAMP"]},
+    #     {"1": 0.7, "2": 0.3}
+    # )
+    # mixed_waveform_04 = mix_waveforms(
+    #     {
+    #         "1": basic_waveforms["SQUARE"],
+    #         "2": pulse_train_wavwform_01,
+    #         "3": polynomial_wave_waveform_01,
+    #         "4": exponential_decay_waveform_01 * -1,
+    #         "5": basic_waveforms["RAMP"],
+    #         "6": exponential_decay_waveform_01
+    #     },
+    #     {
+    #         "1": 0.05,
+    #         "2": 0.05,
+    #         "3": 0.05,
+    #         "4": 0.4,
+    #         "5": 0.1,
+    #         "6": 0.45
+    #     }
+    # )
+
+    # # Save all waveforms to CSV
+    
+
+    # save_waveform_to_csv(exponential_decay_waveform_01, f"{folder}EXPONENTIAL_01.csv")
+    # save_waveform_to_csv(exponential_decay_waveform_01 * -1, f"{folder}EXPONENTIAL_02.csv")
+
+    # save_waveform_to_csv(gaussian_waveform_01, f"{folder}GAUSSIAN_01.csv")
+    # save_waveform_to_csv(pulse_train_wavwform_01, f"{folder}PULSE_TRAIN_01.csv")
+    # save_waveform_to_csv(polynomial_wave_waveform_01, f"{folder}POLYNOMIAL_01.csv")
+    # save_waveform_to_csv(square_with_duty_cycle_01, f"{folder}SQR_DC_01.csv")
+
+    # save_waveform_to_csv(mixed_waveform_01, f"{folder}MIXED_01.csv")
+    # save_waveform_to_csv(mixed_waveform_02, f"{folder}MIXED_02.csv")
+    # save_waveform_to_csv(mixed_waveform_03, f"{folder}MIXED_03.csv")
+    # save_waveform_to_csv(mixed_waveform_04, f"{folder}MIXED_04.csv")
+
+    # generate_random(folder)
+    # generate_random_mix(folder)
+
+    plotLookupTablesFromFolder.plot_in_columns(folderBasicWaveforms, 1)
+    # plotLookupTablesFromFolder.plot_in_columns(folderAdditiveWaveforms, 1)
+    # plotLookupTablesFromFolder.plot_in_columns(folderFourierWaveforms, 1)
+
