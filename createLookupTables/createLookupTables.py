@@ -1,4 +1,5 @@
 import numpy as np
+from pathlib import Path
 
 # Generate basic waveforms
 def generate_basic_waveforms(num_points=256):
@@ -6,13 +7,25 @@ def generate_basic_waveforms(num_points=256):
     waveforms = {
         "sine_wave": np.sin(phase),
         "square_wave": np.sign(np.sin(phase)),
-        "triangle_wave": 2 * np.abs(2 * phase / (2 * np.pi) - np.floor(2 * phase / (2 * np.pi) + 0.5)) - 1,
+        "triangle_wave": generate_triangle_wave(256),
         "sawtooth_wave": 2 * (phase / (2 * np.pi) - np.floor(phase / (2 * np.pi) + 0.5)),
-        "reverse_sawtooth_wave": 1 - 2 * (phase / (2 * np.pi) - np.floor(phase / (2 * np.pi) + 0.5)),
+        "reverse_sawtooth_wave": 1 - 2 * (phase / (2 * np.pi) - np.floor(phase / (2 * np.pi) + 0.5)) - 1,
     }
-    for key in waveforms:
-        waveforms[key][0] = 0  # Ensure the first value is 0
+    # for key in waveforms:
+    #     waveforms[key][0] = 0  # Ensure the first value is 0
     return waveforms
+
+def generate_triangle_wave(num_points):
+    phase = np.linspace(0, 1, num_points, endpoint=False)  # Phase from 0 to 1
+    # Shift the waveform by 90 degrees (1/4 of the period)
+    triangle_wave = (2 * np.abs(2 * ((phase + 0.25) % 1 - 0.5)) - 1) * -1
+    return triangle_wave
+
+def generate_half_triangle_wave(num_points):
+    phase = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
+    # Proper triangle wave formula
+    triangle_wave = 2 * np.abs(2 * (phase / (2 * np.pi)) - np.floor(2 * (phase / (2 * np.pi)) + 0.5)) - 1
+    return triangle_wave
 
 # Create additive synthesis waveforms
 def create_additive_waveform(harmonics, num_points=256):
@@ -62,8 +75,10 @@ if __name__ == "__main__":
     )
 
     # Save all waveforms to CSV
+    appFolder = Path(__file__).parent.absolute()
+    folder = f"{appFolder}\\lookupTables\\"
     for name, waveform in basic_waveforms.items():
-        save_waveform_to_csv(waveform, f"{name}_lookup_table.csv")
-    save_waveform_to_csv(additive_waveform, "additive_synthesis_lookup_table.csv")
-    save_waveform_to_csv(fourier_waveform, "fourier_synthesis_lookup_table.csv")
-    save_waveform_to_csv(mixed_waveform, "mixed_waveform_lookup_table.csv")
+        save_waveform_to_csv(waveform, f"{folder + name}_lookup_table.csv")
+    save_waveform_to_csv(additive_waveform, f"{folder}additive_synthesis_lookup_table.csv")
+    save_waveform_to_csv(fourier_waveform, f"{folder}fourier_synthesis_lookup_table.csv")
+    save_waveform_to_csv(mixed_waveform, f"{folder}mixed_waveform_lookup_table.csv")
