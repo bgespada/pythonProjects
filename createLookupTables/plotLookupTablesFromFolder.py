@@ -137,6 +137,8 @@ if __name__ == "__main__":
     # Replace 'your_folder_path' with the path to the folder containing CSV files
     appFolder = Path(__file__).parent.absolute()
     folder = f"{appFolder}\\lookupTables\\"
+    if not os.path.exists(folder):
+        os.makedirs(folder)
     # plot_all_lookup_tables_in_folder(folder)
     # plot_all_with_toggle(folder)
     # plot_all_separately(folder)

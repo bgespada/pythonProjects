@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -25,6 +26,8 @@ def plot_csv_lookup_table(filename):
 if __name__ == "__main__":
     appFolder = Path(__file__).parent.absolute()
     folder = f"{appFolder}\\lookupTables\\"
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
     # Replace 'your_lookup_table.csv' with the path to your CSV file
     plot_csv_lookup_table(f"{folder}sine_wave_lookup_table.csv")
