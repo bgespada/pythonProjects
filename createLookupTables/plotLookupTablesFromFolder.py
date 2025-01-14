@@ -99,7 +99,7 @@ def plot_all_separately(folder_path):
     plt.tight_layout()
     plt.show()
 
-def plot_in_columns(folder_path, num_columns=3):
+def plot_in_columns(folder_path, num_columns=6):
     # Get all CSV files in the folder
     csv_files = [f for f in os.listdir(folder_path) if f.endswith(".csv")]
 
