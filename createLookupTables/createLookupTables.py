@@ -2,15 +2,17 @@ import os
 import numpy as np
 from pathlib import Path
 
-import plotLookupTablesFromFolder
+import plotLookupTablesFromFolderInTabs
 import generateHeaderFile
+import generateFourierWavetable
 
 # Generate basic waveforms
-def generate_basic_waveforms(num_points=256, amplitude=1.0):
+def generate_basic_waveforms(num_points=256, amplitude=1.0, harmonics=20):
     phase = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
     waveforms = {
         "SINE": generate_sine_wave(num_points, amplitude),
         "SQUARE": generate_square_wave(num_points, amplitude),# np.sign(np.sin(phase)),
+        "SQUARE_LIMITED": generate_limited_square_wave(num_points, amplitude, harmonics),
         "TRIANGLE": generate_triangle_wave(num_points, amplitude),
         "SAW": generate_saw_wave(phase, amplitude),
         "RAMP": generate_ramp_wave(phase, amplitude),
@@ -70,6 +72,15 @@ def generate_pink_noise(samples=256, amplitude=1.0):
     pink_noise = np.clip(pink_noise, -1, 1)  # Clip values to [-1, 1]
     pink_noise = pink_noise / np.max(np.abs(pink_noise))  # Normalize the noise to the range [-1, 1]   
     return pink_noise
+
+# Generate "Less than Square" Wave
+def generate_limited_square_wave(samples=256, amplitude=1.0, harmonics=20):
+    x = np.linspace(0, 1, samples, endpoint=False)
+    y = np.zeros(samples)
+    for n in range(1, harmonics + 1, 2):  # Odd harmonics only
+        y += (1 / n) * np.sin(2 * np.pi * n * x) * amplitude
+    y /= np.max(np.abs(y))  # Normalize to [-1, 1]
+    return y
 
 # Create additive synthesis waveforms
 def create_additive_waveform(harmonics, samples=256, amplitude=1.0):
@@ -259,6 +270,9 @@ def saveBasicWaveforms(waveforms, folder):
 if __name__ == "__main__":
 
     appFolder = Path(__file__).parent.absolute()
+    folderHeader = f"{appFolder}\\headerFile\\"
+    if not os.path.exists(folderHeader):
+        os.makedirs(folderHeader)
     folder = f"{appFolder}\\lookupTables\\"
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -268,9 +282,15 @@ if __name__ == "__main__":
     folderAdditiveWaveforms = f"{folder}additiveWaveforms\\"
     if not os.path.exists(folderAdditiveWaveforms):
         os.makedirs(folderAdditiveWaveforms)
+    folderAdditiveWavetable = f"{folder}additiveWavetable\\"
+    if not os.path.exists(folderAdditiveWavetable):
+        os.makedirs(folderAdditiveWavetable)
     folderFourierWaveforms = f"{folder}fourierWaveforms\\"
     if not os.path.exists(folderFourierWaveforms):
         os.makedirs(folderFourierWaveforms)
+    folderFourierWavetable = f"{folder}fourierWavetable\\"
+    if not os.path.exists(folderFourierWavetable):
+        os.makedirs(folderFourierWavetable)
 
     num_points = 256
 
@@ -343,7 +363,11 @@ if __name__ == "__main__":
     # generate_random(folder)
     # generate_random_mix(folder)
 
-    plotLookupTablesFromFolder.plot_in_columns(folderBasicWaveforms, 1)
-    # plotLookupTablesFromFolder.plot_in_columns(folderAdditiveWaveforms, 1)
-    # plotLookupTablesFromFolder.plot_in_columns(folderFourierWaveforms, 1)
+    # UNCOMMENT FOR GENERATE DIFFERENTS FOURIER WAVETABLE
+    # Parameters
+    # num_waveforms = 8  # Number of waveforms in the wavetable
+    # max_harmonics = 16  # Maximum number of harmonics
+    # generateFourierWavetable.generate(folderFourierWavetable, folderHeader, num_points, num_waveforms, max_harmonics)
+
+    plotLookupTablesFromFolderInTabs.plot_lookup_tables_in_tabs(folder)
 
