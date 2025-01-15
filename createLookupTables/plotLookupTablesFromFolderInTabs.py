@@ -43,8 +43,8 @@ def plot_tab_with_columns(figure, lookup_tables, folder_name, num_columns=8):
         ax.plot(data)
         ax.set_title(name, fontsize=8)
         ax.grid(True)
-        ax.set_xlabel("Sample Index", fontsize=7)
-        ax.set_ylabel("Amplitude", fontsize=7)
+        # ax.set_xlabel("Sample Index", fontsize=7)
+        # ax.set_ylabel("Amplitude", fontsize=7)
         ax.tick_params(axis='both', labelsize=6)
     
     # Hide unused subplots
@@ -75,7 +75,7 @@ def plot_lookup_tables_in_tabs(main_folder, wavetable_split=256):
                 notebook.add(tab, text=folder_name)
 
                 # Create a Matplotlib Figure
-                figure = plt.Figure(figsize=(12, 8), dpi=100)
+                figure = plt.Figure(figsize=(14, 12), dpi=100)
                 plot_tab_with_columns(figure, lookup_tables, folder_name)
 
                 # Embed the Plot in the Tab

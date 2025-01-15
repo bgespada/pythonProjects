@@ -136,7 +136,7 @@ def plot_in_columns(folder_path, num_columns=6):
 if __name__ == "__main__":
     # Replace 'your_folder_path' with the path to the folder containing CSV files
     appFolder = Path(__file__).parent.absolute()
-    folder = f"{appFolder}\\lookupTables\\"
+    folder = f"{appFolder}\\lookupTables\\wavetables\\"
     if not os.path.exists(folder):
         os.makedirs(folder)
     # plot_all_lookup_tables_in_folder(folder)

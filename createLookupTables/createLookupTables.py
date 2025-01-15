@@ -2,7 +2,7 @@ import os
 import numpy as np
 from pathlib import Path
 
-import PlotLookupTablesFromFolderInTabs
+import PlotLookupTablesFromFolderInTabs as plotAll
 import GenerateHeaderFile
 import GenerateFourierWavetable
 
@@ -18,14 +18,30 @@ def generate_basic_waveforms(samples=256, amplitude=1.0, harmonics=20):
         "RAMP": RampWave(phase, amplitude),
         "WHITE_NOISE": WhiteNoise(samples, amplitude),
         "PINK_NOISE": PinkNoise(samples, amplitude),
-        "WAVE_01": mix_waveforms({"1": PinkNoise(samples, amplitude), "2": SawWave(phase, amplitude)}, {"1": 0.3, "2": 0.7}),
-        "WAVE_02": mix_waveforms({"1": SineWave(samples, amplitude), "2": PulseTrain()}, {"1": 0.7, "2": 0.3}),
-        "WAVE_03": mix_waveforms({"1": SineWave(samples, amplitude), "2": RampWave(phase, amplitude)}, {"1": 0.7, "2": 0.3}),
-        "WAVE_04": mix_waveforms({"1": SquareWave(samples, amplitude), "2": PulseTrain(), "3": PolynomialWave(), "4": ExponentialDecay() * -1, "5": RampWave(phase, amplitude), "6": ExponentialDecay()}, {"1": 0.05, "2": 0.05, "3": 0.05, "4": 0.4, "5": 0.1, "6": 0.45}),
+        "WAVE_01": mix_waveforms({"1": WhiteNoise(samples, amplitude), "2": SineWave(samples, amplitude)}, {"1": 0.05, "2": 0.95}),
+        "WAVE_02": mix_waveforms({"1": SineWave(samples, amplitude), "2": PulseTrain(samples)}, {"1": 0.7, "2": 0.3}),
+        "WAVE_03": mix_waveforms({"1": SineWave(samples, amplitude), "2": PulseTrain(samples, 48)}, {"1": 0.7, "2": 0.3}),
+        "WAVE_04": mix_waveforms({"1": SineWave(samples, amplitude), "2": RampWave(phase, amplitude)}, {"1": 0.7, "2": 0.3}),
+        "WAVE_05": mix_waveforms({"1": SquareWave(samples, amplitude), "2": PulseTrain(), "3": PolynomialWave(), "4": ExponentialDecay() * -1, "5": RampWave(phase, amplitude), "6": ExponentialDecay()}, {"1": 0.05, "2": 0.05, "3": 0.05, "4": 0.4, "5": 0.1, "6": 0.45}),
         "ADDITIVE_01": additive_waveform(samples, {1: 1.0, 2: 0.5, 3: 0.25}),
         "FOURIER_01": fourier_waveform(samples, 5),
         "ADDITIVE_02": additive_waveform(samples, {1: 1.0, 2: 0.5, 3: 0.25, 4: 0.15, 5: 0.05}),
-        "FOURIER_02": fourier_waveform(samples, 55)
+        "FOURIER_02": fourier_waveform(samples, 55),
+        "EXPONENTIAL_DECAY_01": ExponentialDecay(samples, 5, amplitude),
+        "GAUSSIAN_01": gaussian_wave(samples, 0.5, 0.1, amplitude),
+        "PULSE_TRAIN_01": PulseTrain(samples, 32),
+        "PULSE_TRAIN_02": PulseTrain(samples, 32*2),
+        "PULSE_TRAIN_03": PulseTrain(samples, 32*3),
+        "PULSE_TRAIN_04": PulseTrain(samples, 32*4),
+        "POLYNOMIAL_01": PolynomialWave(samples, [0, -2, 1, -3, 1]),
+        "SQUARE_WITH_DUTY_CYCLE_01": square_with_duty_cycle(samples, 0.12, amplitude),
+        "SQUARE_WITH_DUTY_CYCLE_02": square_with_duty_cycle(samples, 0.24, amplitude),
+        "SQUARE_WITH_DUTY_CYCLE_03": square_with_duty_cycle(samples, 0.36, amplitude),
+        "SQUARE_WITH_DUTY_CYCLE_04": square_with_duty_cycle(samples, 0.48, amplitude),
+        "SQUARE_WITH_DUTY_CYCLE_05": square_with_duty_cycle(samples, 0.60, amplitude),
+        "SQUARE_WITH_DUTY_CYCLE_06": square_with_duty_cycle(samples, 0.72, amplitude),
+        "SQUARE_WITH_DUTY_CYCLE_07": square_with_duty_cycle(samples, 0.84, amplitude),
+        "SQUARE_WITH_DUTY_CYCLE_08": square_with_duty_cycle(samples, 0.96, amplitude),
     }
     return waveforms
 
@@ -194,7 +210,7 @@ def mix_random_waveforms(waveform1, waveform2, weight1=0.5, weight2=0.5):
     mixed /= np.max(np.abs(mixed))  # Normalize to [-1, 1]
     return mixed
 
-def random(outputFolder, samples=256, iterations=10):
+def RandomWaveform(outputFolder, samples=256, iterations=10):
     for i in range(iterations):
         # Randomly choose a waveform type
         waveform_type = np.random.choice(['Fourier', 'Additive', 'Polynomial'])
@@ -203,26 +219,26 @@ def random(outputFolder, samples=256, iterations=10):
         
         if waveform_type == 'Fourier':
             harmonics = np.random.randint(3, 8)  # Random number of harmonics
-            y, params = generate_random_fourier_wave(samples, harmonics)
+            y, params = random_fourier_wave(samples, harmonics)
             filename = os.path.join(outputFolder, f"random_fourier_wave_{i+1}.csv")
             print(f"  Parameters: {params}")
         
         elif waveform_type == 'Additive':
             harmonics = np.random.randint(3, 8)  # Random number of harmonics
-            y, params = generate_random_additive_wave(samples, harmonics)
+            y, params = random_additive_wave(samples, harmonics)
             filename = os.path.join(outputFolder, f"random_additive_wave_{i+1}.csv")
             print(f"  Parameters: {params}")
         
         elif waveform_type == 'Polynomial':
             max_degree = np.random.randint(2, 6)  # Random polynomial degree
-            y, params = generate_random_polynomial_wave(samples, max_degree)
+            y, params = random_polynomial_wave(samples, max_degree)
             filename = os.path.join(outputFolder, f"random_polynomial_wave_{i+1}.csv")
             print(f"  Parameters: {params}")
         
         # Save to CSV
         SaveWaveformToCsv(y, filename)
 
-def random_mix(outputFolder, samples=256, iterations=10):
+def RandomMixWaveform(outputFolder, samples=256, iterations=10):
     for i in range(iterations):
         print(f"\nIteration {i+1}: Generating waveforms...")
         
@@ -264,15 +280,6 @@ def random_mix(outputFolder, samples=256, iterations=10):
         print(f"  Waveform 1 ({waveform1_type}): {params1}")
         print(f"  Waveform 2 ({waveform2_type}): {params2}")
         print("  Mixed waveform saved.")    
-
-# def GenerateWavetable(base_waveform, num_tables=8, initialHarmonics=1):
-#     """Generates a wavetable with progressive harmonic richness."""
-#     length = len(base_waveform)
-#     wavetable = np.zeros((num_tables, length))
-#     for i in range(num_tables):
-#         harmonics = initialHarmonics + i * (8 // num_tables)  # Progressive increase in harmonics
-#         wavetable[i, :] = fourier_waveform(length, harmonics)
-#     return wavetable
 
 def GenerateProgressiveWavetable(base_waveform, num_waveforms=8):
     """
@@ -370,6 +377,65 @@ def GenerateWaveformProgression(waveform1, waveform2, num_steps=8):
     
     return np.array(wavetable)
 
+def CreateWavetableFromWaveforms(waveforms):
+    """
+    Create a wavetable from multiple waveforms.
+    
+    Parameters:
+        waveforms (list of np.ndarray): List of waveforms, each with the same number of samples.
+        
+    Returns:
+        np.ndarray: 2D array representing the wavetable, where each row is a waveform.
+    """
+    if len(waveforms) == 0:
+        raise ValueError("The waveforms list cannot be empty.")
+    
+    # Ensure all waveforms have the same number of samples
+    length = len(waveforms[0])
+    if not all(len(waveform) == length for waveform in waveforms):
+        raise ValueError("All waveforms must have the same number of samples.")
+    
+    # Stack waveforms into a 2D array
+    wavetable = np.stack(waveforms)
+    
+    # Normalize each waveform to the range [-1, 1]
+    wavetable = np.array([waveform / np.max(np.abs(waveform)) for waveform in wavetable])
+    
+    return wavetable
+
+def CreateWavetableFromCSVFiles(folder_path):
+    """
+    Create a wavetable from multiple CSV files in a folder.
+    
+    Parameters:
+        folder_path (str): Path to the folder containing CSV files.
+        
+    Returns:
+        np.ndarray: 2D array representing the wavetable.
+    """
+    # List CSV files in the folder
+    csv_files = [file for file in os.listdir(folder_path) if file.endswith('.csv')]
+    if not csv_files:
+        raise ValueError("No CSV files found in the specified folder.")
+    
+    waveforms = []
+    for file in csv_files:
+        file_path = os.path.join(folder_path, file)
+        waveform = np.loadtxt(file_path, delimiter=",")
+        
+        # Normalize waveform to [-1, 1]
+        waveform /= np.max(np.abs(waveform))
+        waveforms.append(waveform)
+    
+    # Ensure all waveforms have the same length
+    length = len(waveforms[0])
+    if not all(len(waveform) == length for waveform in waveforms):
+        raise ValueError("All waveforms in CSV files must have the same number of samples.")
+    
+    # Stack waveforms into a 2D array
+    wavetable = np.stack(waveforms)
+    return wavetable
+
 # Save lookup table to a CSV file
 def SaveWaveformToCsv(waveform, filename):
     np.savetxt(filename, waveform, delimiter=",", fmt="%.6f")
@@ -384,16 +450,17 @@ def SaveBasicWaveforms(waveforms, folder):
     for name, waveform in waveforms.items():
         SaveWaveformToCsv(waveform, f"{folder + name}.csv")
 
+# Function: Save Wavetable to C Header File
 def SaveWavetableToHeader(wavetable, filename, name="WaveTable"):
-    with open(filename, 'w') as f:
-        f.write(f"#ifndef {name.upper()}_HPP\n")
-        f.write(f"#define {name.upper()}_HPP\n\n")
-        for i, table in enumerate(wavetable):
-            f.write(f"constexpr float {name}_Table_{i}[] = {{")
-            f.write(", ".join(f"{x:.6f}" for x in table))
-            f.write("};\n\n")
-        f.write(f"#endif\n")
-
+    with open(filename, "w") as file:
+        file.write(f"#ifndef {name.upper()}_HPP\n#define {name.upper()}_HPP\n\n")
+        file.write(f"// Wavetable generated with {len(wavetable)} waveforms, {wavetable.shape[1]} samples each\n\n")
+        file.write(f"constexpr float {name}[8][256] = {{\n")
+        for waveform in wavetable:
+            file.write("    {" + ", ".join(f"{v:.6f}" for v in waveform) + "},\n")
+        file.write(f"}};\n\n#endif // {name.upper()}_HPP\n")
+    print(f"Saved wavetable to {filename}")
+    
 # Example Usage
 if __name__ == "__main__":
 
@@ -407,9 +474,9 @@ if __name__ == "__main__":
     folderBasicWaveforms = f"{folder}basicWaveforms\\"
     if not os.path.exists(folderBasicWaveforms):
         os.makedirs(folderBasicWaveforms)
-    # folderAdditiveWaveforms = f"{folder}additiveWaveforms\\"
-    # if not os.path.exists(folderAdditiveWaveforms):
-    #     os.makedirs(folderAdditiveWaveforms)
+    folderRandomWaveforms = f"{folder}randomWaveforms\\"
+    if not os.path.exists(folderRandomWaveforms):
+        os.makedirs(folderRandomWaveforms)
     # folderAdditiveWavetable = f"{folder}additiveWavetable\\"
     # if not os.path.exists(folderAdditiveWavetable):
     #     os.makedirs(folderAdditiveWavetable)
@@ -426,47 +493,128 @@ if __name__ == "__main__":
     basic_waveforms = generate_basic_waveforms(samples)
     SaveBasicWaveforms(basic_waveforms, folderBasicWaveforms)
 
-    # Create a fourier wavetable
-    SaveWavetableToCsv(GenerateProgressiveWavetable(basic_waveforms["SQUARE"]), f"{folderWavetables}SQUARE_01.csv")
-    SaveWavetableToCsv(GenerateProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"]), f"{folderWavetables}SQUARE_LIMITED_01.csv")
-    SaveWavetableToCsv(GenerateProgressiveWavetable(basic_waveforms["SAW"]), f"{folderWavetables}SAW_01.csv")
+    n = "WT_001"
+    wt = CreateWavetableFromWaveforms([basic_waveforms["SINE"],
+                                       basic_waveforms["TRIANGLE"],
+                                       basic_waveforms["RAMP"],
+                                       basic_waveforms["SAW"],
+                                       basic_waveforms["SQUARE"],
+                                       basic_waveforms["SQUARE_LIMITED"],
+                                       basic_waveforms["WHITE_NOISE"],
+                                       basic_waveforms["PINK_NOISE"]
+                                       ])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
 
-    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE"], transformation="harmonics"), f"{folderWavetables}SQUARE_02.csv")
-    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"], transformation="harmonics"), f"{folderWavetables}SQUARE_LIMITED_02.csv")
-    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SAW"], transformation="harmonics"), f"{folderWavetables}SAW_02.csv")
+    n = "WT_002"
+    wt = CreateWavetableFromWaveforms([basic_waveforms["ADDITIVE_01"],
+                                       basic_waveforms["ADDITIVE_02"],
+                                       basic_waveforms["FOURIER_01"],
+                                       basic_waveforms["FOURIER_02"],
+                                       basic_waveforms["WAVE_02"],
+                                       basic_waveforms["WAVE_03"],
+                                       basic_waveforms["WAVE_04"],
+                                       basic_waveforms["WAVE_05"]
+                                       ])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
 
-    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE"], transformation="smoothing"), f"{folderWavetables}SQUARE_03.csv")
-    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"], transformation="smoothing"), f"{folderWavetables}SQUARE_LIMITED_03.csv")
-    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SAW"], transformation="smoothing"), f"{folderWavetables}SAW_03.csv")
+    n = "WT_011"
+    wt = GenerateProgressiveWavetable(basic_waveforms["SQUARE"])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
 
-    SaveWavetableToCsv(GenerateWaveformProgression(basic_waveforms["SQUARE"], basic_waveforms["SQUARE_LIMITED"]), f"{folderWavetables}SQUARE_04.csv")
-    SaveWavetableToCsv(GenerateWaveformProgression(basic_waveforms["SQUARE_LIMITED"], basic_waveforms["SAW"]), f"{folderWavetables}SQUARE_LIMITED_04.csv")
-    SaveWavetableToCsv(GenerateWaveformProgression(basic_waveforms["SAW"], basic_waveforms["FOURIER_01"]), f"{folderWavetables}SAW_04.csv")
+    n = "WT_012"
+    wt = GenerateProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
 
-    # exponential_decay_waveform_01 = generate_exponential_decay(num_points)
-    # gaussian_waveform_01 = generate_gaussian_wave(num_points)
-    # pulse_train_wavwform_01 = generate_pulse_train(num_points)
-    # polynomial_wave_waveform_01 = generate_polynomial_wave(num_points, [0,-2,1, -3,1])
-    # square_with_duty_cycle_01 = generate_square_with_duty_cycle(num_points)
+    n = "WT_013"
+    wt = GenerateProgressiveWavetable(basic_waveforms["SAW"])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
 
-    # # Save all waveforms to CSV
+    n = "WT_014"
+    wt = GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE"], transformation="harmonics")
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_015"
+    wt = GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"], transformation="harmonics")
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_016"
+    wt = GenerateCustomProgressiveWavetable(basic_waveforms["SAW"], transformation="harmonics")
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_017"
+    wt = GenerateCustomProgressiveWavetable(basic_waveforms["WAVE_02"], transformation="harmonics")
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    # n = "WT_018"
+    # wt = GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE"], transformation="smoothing")
+    # SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    # SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    # n = "WT_019"
+    # wt = GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"], transformation="smoothing")
+    # SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    # SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_020"
+    wt = GenerateCustomProgressiveWavetable(basic_waveforms["SAW"], transformation="smoothing")
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_021"
+    wt = GenerateCustomProgressiveWavetable(basic_waveforms["WAVE_02"], transformation="smoothing")
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    # n = "WT_022"
+    # wt = GenerateWaveformProgression(basic_waveforms["SQUARE"], basic_waveforms["SQUARE_LIMITED"])
+    # SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    # SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_023"
+    wt = GenerateWaveformProgression(basic_waveforms["SQUARE_LIMITED"], basic_waveforms["SAW"])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_024"
+    wt = GenerateWaveformProgression(basic_waveforms["SAW"], basic_waveforms["FOURIER_01"])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_025"
+    wt = GenerateWaveformProgression(basic_waveforms["WAVE_02"], basic_waveforms["WAVE_03"])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_026"
+    wt = CreateWavetableFromWaveforms([basic_waveforms["SQUARE_WITH_DUTY_CYCLE_01"],
+                                       basic_waveforms["SQUARE_WITH_DUTY_CYCLE_02"],
+                                       basic_waveforms["SQUARE_WITH_DUTY_CYCLE_03"],
+                                       basic_waveforms["SQUARE_WITH_DUTY_CYCLE_04"],
+                                       basic_waveforms["SQUARE_WITH_DUTY_CYCLE_05"],
+                                       basic_waveforms["SQUARE_WITH_DUTY_CYCLE_06"],
+                                       basic_waveforms["SQUARE_WITH_DUTY_CYCLE_07"],
+                                       basic_waveforms["SQUARE_WITH_DUTY_CYCLE_08"]
+                                       ])
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
+    n = "WT_027"
+    wt = CreateWavetableFromCSVFiles(folder + "forWavetable\\")
+    SaveWavetableToCsv(wt, f"{folderWavetables}{n}.csv")
+    SaveWavetableToHeader(wt, f"{folderHeader}{n}.hpp", n)
+
     
-
-    # save_waveform_to_csv(exponential_decay_waveform_01, f"{folder}EXPONENTIAL_01.csv")
-    # save_waveform_to_csv(exponential_decay_waveform_01 * -1, f"{folder}EXPONENTIAL_02.csv")
-
-    # save_waveform_to_csv(gaussian_waveform_01, f"{folder}GAUSSIAN_01.csv")
-    # save_waveform_to_csv(pulse_train_wavwform_01, f"{folder}PULSE_TRAIN_01.csv")
-    # save_waveform_to_csv(polynomial_wave_waveform_01, f"{folder}POLYNOMIAL_01.csv")
-    # save_waveform_to_csv(square_with_duty_cycle_01, f"{folder}SQR_DC_01.csv")
-
-    # save_waveform_to_csv(mixed_waveform_01, f"{folder}MIXED_01.csv")
-    # save_waveform_to_csv(mixed_waveform_02, f"{folder}MIXED_02.csv")
-    # save_waveform_to_csv(mixed_waveform_03, f"{folder}MIXED_03.csv")
-    # save_waveform_to_csv(mixed_waveform_04, f"{folder}MIXED_04.csv")
-
-    # generate_random(folder)
-    # generate_random_mix(folder)
+    # RandomWaveform(folderRandomWaveforms)
+    # RandomMixWaveform(folderRandomWaveforms)
 
     # UNCOMMENT FOR GENERATE DIFFERENTS FOURIER WAVETABLE
     # Parameters
@@ -474,5 +622,5 @@ if __name__ == "__main__":
     # max_harmonics = 16  # Maximum number of harmonics
     # generateFourierWavetable.generate(folderFourierWavetable, folderHeader, num_points, num_waveforms, max_harmonics)
 
-    PlotLookupTablesFromFolderInTabs.plot_lookup_tables_in_tabs(folder)
+    plotAll.plot_lookup_tables_in_tabs(folder)
 
