@@ -2,50 +2,58 @@ import os
 import numpy as np
 from pathlib import Path
 
-import plotLookupTablesFromFolderInTabs
-import generateHeaderFile
-import generateFourierWavetable
+import PlotLookupTablesFromFolderInTabs
+import GenerateHeaderFile
+import GenerateFourierWavetable
 
 # Generate basic waveforms
-def generate_basic_waveforms(num_points=256, amplitude=1.0, harmonics=20):
-    phase = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
+def generate_basic_waveforms(samples=256, amplitude=1.0, harmonics=20):
+    phase = np.linspace(0, 2 * np.pi, samples, endpoint=False)
     waveforms = {
-        "SINE": generate_sine_wave(num_points, amplitude),
-        "SQUARE": generate_square_wave(num_points, amplitude),# np.sign(np.sin(phase)),
-        "SQUARE_LIMITED": generate_limited_square_wave(num_points, amplitude, harmonics),
-        "TRIANGLE": generate_triangle_wave(num_points, amplitude),
-        "SAW": generate_saw_wave(phase, amplitude),
-        "RAMP": generate_ramp_wave(phase, amplitude),
-        "WHITE_NOISE": generate_white_noise(num_points, amplitude),
-        "PINK_NOISE": generate_pink_noise(num_points, amplitude),
+        "SINE": SineWave(samples, amplitude),
+        "SQUARE": SquareWave(samples, amplitude),# np.sign(np.sin(phase)),
+        "SQUARE_LIMITED": LimitedSquareWave(samples, harmonics, amplitude),
+        "TRIANGLE": TriangleWave(samples, amplitude),
+        "SAW": SawWave(phase, amplitude),
+        "RAMP": RampWave(phase, amplitude),
+        "WHITE_NOISE": WhiteNoise(samples, amplitude),
+        "PINK_NOISE": PinkNoise(samples, amplitude),
+        "WAVE_01": mix_waveforms({"1": PinkNoise(samples, amplitude), "2": SawWave(phase, amplitude)}, {"1": 0.3, "2": 0.7}),
+        "WAVE_02": mix_waveforms({"1": SineWave(samples, amplitude), "2": PulseTrain()}, {"1": 0.7, "2": 0.3}),
+        "WAVE_03": mix_waveforms({"1": SineWave(samples, amplitude), "2": RampWave(phase, amplitude)}, {"1": 0.7, "2": 0.3}),
+        "WAVE_04": mix_waveforms({"1": SquareWave(samples, amplitude), "2": PulseTrain(), "3": PolynomialWave(), "4": ExponentialDecay() * -1, "5": RampWave(phase, amplitude), "6": ExponentialDecay()}, {"1": 0.05, "2": 0.05, "3": 0.05, "4": 0.4, "5": 0.1, "6": 0.45}),
+        "ADDITIVE_01": additive_waveform(samples, {1: 1.0, 2: 0.5, 3: 0.25}),
+        "FOURIER_01": fourier_waveform(samples, 5),
+        "ADDITIVE_02": additive_waveform(samples, {1: 1.0, 2: 0.5, 3: 0.25, 4: 0.15, 5: 0.05}),
+        "FOURIER_02": fourier_waveform(samples, 55)
     }
     return waveforms
 
-def generate_sine_wave(samples=256, amplitude=1.0):
+def SineWave(samples=256, amplitude=1.0):
     return np.sin(np.linspace(0, 2 * np.pi, samples, endpoint=False)) * amplitude
 
-def generate_triangle_wave(samples=256, amplitude=1.0):
+def TriangleWave(samples=256, amplitude=1.0):
     phase = np.linspace(0, 1, samples, endpoint=False)  # Phase from 0 to 1
     # Shift the waveform by 90 degrees (1/4 of the period)
     triangle_wave = ((2 * np.abs(2 * ((phase + 0.25) % 1 - 0.5)) - 1) * -1) * amplitude
     return triangle_wave
 
-def generate_half_triangle_wave(samples=256, amplitude=1.0):
+def half_triangle_wave(samples=256, amplitude=1.0):
     phase = np.linspace(0, 2 * np.pi, samples, endpoint=False) * amplitude
     # Proper triangle wave formula
     triangle_wave = 2 * np.abs(2 * (phase / (2 * np.pi)) - np.floor(2 * (phase / (2 * np.pi)) + 0.5)) - 1
     return triangle_wave
 
-def generate_square_wave(samples=256, amplitude=1.0):
+def SquareWave(samples=256, amplitude=1.0):
     return np.sign(np.sin(np.linspace(0, 2 * np.pi, samples, endpoint=False))) * amplitude
 
-def generate_saw_wave(phase, amplitude=1.0):
+def SawWave(phase, amplitude=1.0):
     return 2 * (phase / (2 * np.pi) - np.floor(phase / (2 * np.pi) + 0.5)) * amplitude
 
-def generate_ramp_wave(phase, amplitude=1.0):
+def RampWave(phase, amplitude=1.0):
     return (1 - 2 * (phase / (2 * np.pi) - np.floor(phase / (2 * np.pi) + 0.5)) - 1) * amplitude
 
-def generate_white_noise(samples=256, amplitude=1.0):
+def WhiteNoise(samples=256, amplitude=1.0):
     """Generates white noise with a given number of samples."""
     # Normal distribution (mean = 0, stddev = 1)
     noise = np.random.normal(0, 1, samples) * amplitude
@@ -54,27 +62,27 @@ def generate_white_noise(samples=256, amplitude=1.0):
     noise = noise / np.max(np.abs(noise))  # Normalize to the maximum amplitude
     return noise
 
-def generate_pink_noise(samples=256, amplitude=1.0):
+def PinkNoise(samples=256, amplitude=1.0):
     """Generates pink noise using the Voss-McCartney algorithm."""
     # Generate white noise
-    white_noise = generate_white_noise(samples)
+    wn = WhiteNoise(samples)
     
     # Apply Voss-McCartney algorithm to simulate 1/f noise
     # Create a power spectrum with decreasing amplitude as frequency increases
     # This involves adding noise in bands of decreasing power
-    pink_noise = np.zeros(samples)
+    pk = np.zeros(samples)
     for i in range(1, samples + 1):
-        pink_noise[i - 1] = np.sum(white_noise[:i]) / np.sqrt(i)  # Weighted sum for 1/f
+        pk[i - 1] = np.sum(wn[:i]) / np.sqrt(i)  # Weighted sum for 1/f
 
     # Normalize the result
-    pink_noise = (pink_noise - np.mean(pink_noise)) / np.max(np.abs(pink_noise))
+    pk = (pk - np.mean(pk)) / np.max(np.abs(pk))
      # Normalize the result to [-1, 1]
-    pink_noise = np.clip(pink_noise, -1, 1)  # Clip values to [-1, 1]
-    pink_noise = pink_noise / np.max(np.abs(pink_noise))  # Normalize the noise to the range [-1, 1]   
-    return pink_noise
+    pk = np.clip(pk, -1, 1)  # Clip values to [-1, 1]
+    pk = pk / np.max(np.abs(pk))  # Normalize the noise to the range [-1, 1]   
+    return pk
 
 # Generate "Less than Square" Wave
-def generate_limited_square_wave(samples=256, amplitude=1.0, harmonics=20):
+def LimitedSquareWave(samples=256, harmonics=20, amplitude=1.0):
     x = np.linspace(0, 1, samples, endpoint=False)
     y = np.zeros(samples)
     for n in range(1, harmonics + 1, 2):  # Odd harmonics only
@@ -83,7 +91,7 @@ def generate_limited_square_wave(samples=256, amplitude=1.0, harmonics=20):
     return y
 
 # Create additive synthesis waveforms
-def create_additive_waveform(harmonics, samples=256, amplitude=1.0):
+def additive_waveform(samples=256, harmonics=1, amplitude=1.0):
     phase = np.linspace(0, 2 * np.pi, samples, endpoint=False) * amplitude
     waveform = np.zeros_like(phase)
     for harmonic, amp in harmonics.items():
@@ -91,28 +99,28 @@ def create_additive_waveform(harmonics, samples=256, amplitude=1.0):
     return waveform / np.max(np.abs(waveform))  # Normalize to [-1, 1]
 
 # Create Fourier synthesis waveforms
-def create_fourier_waveform(num_harmonics, samples=256, amplitude=1.0):
+def fourier_waveform(samples=256, harmonics=1, amplitude=1.0):
     phase = np.linspace(0, 2 * np.pi, samples, endpoint=False) * amplitude
     waveform = np.zeros_like(phase)
-    for n in range(1, num_harmonics + 1):
+    for n in range(1, harmonics + 1):
         waveform += (1 / n) * np.sin(n * phase)  # Harmonics with decreasing amplitude
     return waveform / np.max(np.abs(waveform))  # Normalize to [-1, 1]
 
-def generate_exponential_decay(samples=256, decay_rate=5, amplitude=1.0):
+def ExponentialDecay(samples=256, decay_rate=5, amplitude=1.0):
     """Generates an exponentially decaying waveform."""
     x = np.linspace(0, 1, samples) * amplitude
     return np.exp(-decay_rate * x) * 2 - 1
 
-def generate_gaussian_wave(samples=256, mean=0.5, stddev=0.1, amplitude=1.0):
+def gaussian_wave(samples=256, mean=0.5, stddev=0.1, amplitude=1.0):
     """Generates a Gaussian waveform."""
     x = np.linspace(0, 1, samples) * amplitude
     return np.exp(-0.5 * ((x - mean) / stddev) ** 2) * 2 - 1
 
-def generate_pulse_train(samples=256, period=32):
+def PulseTrain(samples=256, period=32):
     """Generates a periodic pulse train."""
     return np.tile([1] * (period // 2) + [-1] * (period // 2), samples // period + 1)[:samples]
 
-def generate_polynomial_wave(samples=256, coefficients=[1, -2, 1], amplitude=1.0):
+def PolynomialWave(samples=256, coefficients=[1, -2, 1], amplitude=1.0):
     """Generates a waveform based on a polynomial equation."""
     # Ensure coefficients are passed as a 1D array
     coefficients = np.array(coefficients)
@@ -131,7 +139,7 @@ def generate_polynomial_wave(samples=256, coefficients=[1, -2, 1], amplitude=1.0
     y = y / np.max(np.abs(y))  # Normalize to [-1, 1] range    
     return y
 
-def generate_square_with_duty_cycle(samples, duty_cycle=0.5, amplitude=1.0):
+def square_with_duty_cycle(samples, duty_cycle=0.5, amplitude=1.0):
     """Generates a square wave with a custom duty cycle."""
     x = np.linspace(0, 1, samples, endpoint=False) * amplitude
     return np.where((x % 1) < duty_cycle, 1, -1)
@@ -144,7 +152,7 @@ def mix_waveforms(waveforms, weights):
     return mixed_waveform / np.max(np.abs(mixed_waveform))  # Normalize to [-1, 1]
 
 # Method: Fourier Waveform
-def generate_random_fourier_wave(samples, harmonics):
+def random_fourier_wave(samples, harmonics):
     x = np.linspace(0, 1, samples, endpoint=False)
     y = np.zeros(samples)
     random_amplitudes = np.random.uniform(-1, 1, harmonics)  # Random amplitudes
@@ -155,7 +163,7 @@ def generate_random_fourier_wave(samples, harmonics):
     return y, {"Amplitudes": random_amplitudes, "Phases": random_phases}
 
 # Method: Additive Synthesis Waveform
-def generate_random_additive_wave(samples, harmonics):
+def random_additive_wave(samples, harmonics):
     x = np.linspace(0, 1, samples, endpoint=False)
     y = np.zeros(samples)
     random_amplitudes = np.random.uniform(0, 1, harmonics)  # Random amplitudes
@@ -165,7 +173,7 @@ def generate_random_additive_wave(samples, harmonics):
     return y, {"Amplitudes": random_amplitudes}
 
 # Method: Polynomial Waveform
-def generate_random_polynomial_wave(samples, max_degree):
+def random_polynomial_wave(samples, max_degree):
     coefficients = np.random.uniform(-1, 1, max_degree + 1)  # Random coefficients
     x = np.linspace(-1, 1, samples)
     y = np.polyval(coefficients, x)
@@ -186,7 +194,7 @@ def mix_random_waveforms(waveform1, waveform2, weight1=0.5, weight2=0.5):
     mixed /= np.max(np.abs(mixed))  # Normalize to [-1, 1]
     return mixed
 
-def generate_random(outputFolder, samples=256, iterations=10):
+def random(outputFolder, samples=256, iterations=10):
     for i in range(iterations):
         # Randomly choose a waveform type
         waveform_type = np.random.choice(['Fourier', 'Additive', 'Polynomial'])
@@ -212,9 +220,9 @@ def generate_random(outputFolder, samples=256, iterations=10):
             print(f"  Parameters: {params}")
         
         # Save to CSV
-        save_waveform_to_csv(y, filename)
+        SaveWaveformToCsv(y, filename)
 
-def generate_random_mix(outputFolder, samples=256, iterations=10):
+def random_mix(outputFolder, samples=256, iterations=10):
     for i in range(iterations):
         print(f"\nIteration {i+1}: Generating waveforms...")
         
@@ -225,46 +233,166 @@ def generate_random_mix(outputFolder, samples=256, iterations=10):
         # Generate Waveform 1
         if waveform1_type == 'Fourier':
             harmonics = np.random.randint(3, 8)
-            waveform1, params1 = generate_random_fourier_wave(samples, harmonics)
+            waveform1, params1 = random_fourier_wave(samples, harmonics)
         elif waveform1_type == 'Additive':
             harmonics = np.random.randint(3, 8)
-            waveform1, params1 = generate_random_additive_wave(samples, harmonics)
+            waveform1, params1 = random_additive_wave(samples, harmonics)
         elif waveform1_type == 'Polynomial':
             max_degree = np.random.randint(2, 6)
-            waveform1, params1 = generate_random_polynomial_wave(samples, max_degree)
+            waveform1, params1 = random_polynomial_wave(samples, max_degree)
         
         # Generate Waveform 2
         if waveform2_type == 'Fourier':
             harmonics = np.random.randint(3, 8)
-            waveform2, params2 = generate_random_fourier_wave(samples, harmonics)
+            waveform2, params2 = random_fourier_wave(samples, harmonics)
         elif waveform2_type == 'Additive':
             harmonics = np.random.randint(3, 8)
-            waveform2, params2 = generate_random_additive_wave(samples, harmonics)
+            waveform2, params2 = random_additive_wave(samples, harmonics)
         elif waveform2_type == 'Polynomial':
             max_degree = np.random.randint(2, 6)
-            waveform2, params2 = generate_random_polynomial_wave(samples, max_degree)
+            waveform2, params2 = random_polynomial_wave(samples, max_degree)
         
         # Save individual waveforms
-        save_waveform_to_csv(waveform1, os.path.join(outputFolder, f"waveform1_{i+1}.csv"))
-        save_waveform_to_csv(waveform2, os.path.join(outputFolder, f"waveform2_{i+1}.csv"))
+        SaveWaveformToCsv(waveform1, os.path.join(outputFolder, f"waveform1_{i+1}.csv"))
+        SaveWaveformToCsv(waveform2, os.path.join(outputFolder, f"waveform2_{i+1}.csv"))
         
         # Mix the two waveforms
         mixed_wave = mix_waveforms({"1": waveform1, "2": waveform2}, {"1": 0.7, "2": 0.3})
-        save_waveform_to_csv(mixed_wave, os.path.join(outputFolder, f"mixed_wave_{i+1}.csv"))
+        SaveWaveformToCsv(mixed_wave, os.path.join(outputFolder, f"mixed_wave_{i+1}.csv"))
         
         # Print parameters
         print(f"  Waveform 1 ({waveform1_type}): {params1}")
         print(f"  Waveform 2 ({waveform2_type}): {params2}")
         print("  Mixed waveform saved.")    
 
+# def GenerateWavetable(base_waveform, num_tables=8, initialHarmonics=1):
+#     """Generates a wavetable with progressive harmonic richness."""
+#     length = len(base_waveform)
+#     wavetable = np.zeros((num_tables, length))
+#     for i in range(num_tables):
+#         harmonics = initialHarmonics + i * (8 // num_tables)  # Progressive increase in harmonics
+#         wavetable[i, :] = fourier_waveform(length, harmonics)
+#     return wavetable
+
+def GenerateProgressiveWavetable(base_waveform, num_waveforms=8):
+    """
+    Generate a progressive wavetable by gradually transforming a base waveform.
+    
+    Parameters:
+        base_waveform (np.ndarray): Original waveform to transform.
+        num_waveforms (int): Number of variations to generate.
+        
+    Returns:
+        np.ndarray: 2D array representing the wavetable.
+    """
+    length = len(base_waveform)
+    wavetable = []
+
+    for i in range(num_waveforms):
+        # Progressively modify the waveform
+        # Example transformations: smoothing, adding harmonics, scaling, etc.
+        factor = i / (num_waveforms - 1)
+        transformed_waveform = base_waveform * (1 - factor) + np.sin(2 * np.pi * np.linspace(0, 1, length)) * factor
+        
+        # Normalize to [-1, 1]
+        transformed_waveform /= np.max(np.abs(transformed_waveform))
+        wavetable.append(transformed_waveform)
+    
+    return np.array(wavetable)
+
+def GenerateCustomProgressiveWavetable(base_waveform, num_waveforms=8, transformation="harmonics"):
+    """
+    Generate a progressive wavetable with custom transformations.
+    
+    Parameters:
+        base_waveform (np.ndarray): Original waveform to transform.
+        num_waveforms (int): Number of variations to generate.
+        transformation (str): Type of transformation ("harmonics", "smoothing", "scaling").
+        
+    Returns:
+        np.ndarray: 2D array representing the wavetable.
+    """
+    length = len(base_waveform)
+    wavetable = []
+
+    for i in range(num_waveforms):
+        factor = i / (num_waveforms - 1)  # Progression factor (0 to 1)
+        if transformation == "harmonics":
+            # Add or remove harmonics progressively
+            additional_wave = np.sin(2 * np.pi * np.linspace(0, 1, length) * (2 + int(factor * 4)))
+            transformed_waveform = base_waveform + additional_wave * factor
+        
+        elif transformation == "smoothing":
+            # Smooth waveform progressively using a moving average
+            window_size = int(5 + factor * (length // 8))  # Larger window for more smoothing
+            smoothed_waveform = np.convolve(base_waveform, np.ones(window_size) / window_size, mode='same')
+            transformed_waveform = smoothed_waveform
+        
+        elif transformation == "scaling":
+            return
+            # Gradually reduce or increase amplitude
+            scale_up = 1 + factor  # Amplitude increases progressively
+            scale_down = 1 - factor  # Amplitude decreases progressively
+            transformed_waveform = base_waveform * (scale_down if factor < 0.5 else scale_up)
+        
+        else:
+            raise ValueError("Invalid transformation type. Choose 'harmonics', 'smoothing', or 'scaling'.")
+        
+        # Normalize to [-1, 1]
+        transformed_waveform /= np.max(np.abs(transformed_waveform))
+        wavetable.append(transformed_waveform)
+
+    return np.array(wavetable)
+
+def GenerateWaveformProgression(waveform1, waveform2, num_steps=8):
+    """
+    Generate a progressive wavetable transitioning from one waveform to another.
+    
+    Parameters:
+        waveform1 (np.ndarray): Starting waveform.
+        waveform2 (np.ndarray): Ending waveform.
+        num_steps (int): Number of progressive steps between the waveforms.
+        
+    Returns:
+        np.ndarray: 2D array representing the progression wavetable.
+    """
+    if len(waveform1) != len(waveform2):
+        raise ValueError("Waveform lengths must be the same.")
+    
+    wavetable = []
+    for i in range(num_steps):
+        factor = i / (num_steps - 1)  # Progression factor (0 to 1)
+        # Linear interpolation between the two waveforms
+        interpolated_waveform = (1 - factor) * waveform1 + factor * waveform2
+        # Normalize to [-1, 1]
+        interpolated_waveform /= np.max(np.abs(interpolated_waveform))
+        wavetable.append(interpolated_waveform)
+    
+    return np.array(wavetable)
+
 # Save lookup table to a CSV file
-def save_waveform_to_csv(waveform, filename):
+def SaveWaveformToCsv(waveform, filename):
     np.savetxt(filename, waveform, delimiter=",", fmt="%.6f")
     print(f"Saved waveform to {filename}")
 
-def saveBasicWaveforms(waveforms, folder):
+# Function: Save Wavetable to CSV
+def SaveWavetableToCsv(wavetable, filename):
+    np.savetxt(filename, wavetable, delimiter=",", header="", comments="")
+    print(f"Saved wavetable to {filename}")
+
+def SaveBasicWaveforms(waveforms, folder):
     for name, waveform in waveforms.items():
-        save_waveform_to_csv(waveform, f"{folder + name}.csv")
+        SaveWaveformToCsv(waveform, f"{folder + name}.csv")
+
+def SaveWavetableToHeader(wavetable, filename, name="WaveTable"):
+    with open(filename, 'w') as f:
+        f.write(f"#ifndef {name.upper()}_HPP\n")
+        f.write(f"#define {name.upper()}_HPP\n\n")
+        for i, table in enumerate(wavetable):
+            f.write(f"constexpr float {name}_Table_{i}[] = {{")
+            f.write(", ".join(f"{x:.6f}" for x in table))
+            f.write("};\n\n")
+        f.write(f"#endif\n")
 
 # Example Usage
 if __name__ == "__main__":
@@ -279,70 +407,47 @@ if __name__ == "__main__":
     folderBasicWaveforms = f"{folder}basicWaveforms\\"
     if not os.path.exists(folderBasicWaveforms):
         os.makedirs(folderBasicWaveforms)
-    folderAdditiveWaveforms = f"{folder}additiveWaveforms\\"
-    if not os.path.exists(folderAdditiveWaveforms):
-        os.makedirs(folderAdditiveWaveforms)
-    folderAdditiveWavetable = f"{folder}additiveWavetable\\"
-    if not os.path.exists(folderAdditiveWavetable):
-        os.makedirs(folderAdditiveWavetable)
-    folderFourierWaveforms = f"{folder}fourierWaveforms\\"
-    if not os.path.exists(folderFourierWaveforms):
-        os.makedirs(folderFourierWaveforms)
-    folderFourierWavetable = f"{folder}fourierWavetable\\"
-    if not os.path.exists(folderFourierWavetable):
-        os.makedirs(folderFourierWavetable)
+    # folderAdditiveWaveforms = f"{folder}additiveWaveforms\\"
+    # if not os.path.exists(folderAdditiveWaveforms):
+    #     os.makedirs(folderAdditiveWaveforms)
+    # folderAdditiveWavetable = f"{folder}additiveWavetable\\"
+    # if not os.path.exists(folderAdditiveWavetable):
+    #     os.makedirs(folderAdditiveWavetable)
+    # folderFourierWaveforms = f"{folder}fourierWaveforms\\"
+    # if not os.path.exists(folderFourierWaveforms):
+    #     os.makedirs(folderFourierWaveforms)
+    folderWavetables = f"{folder}wavetables\\"
+    if not os.path.exists(folderWavetables):
+        os.makedirs(folderWavetables)
 
-    num_points = 256
+    samples = 256
 
     # Generate basic waveforms
-    basic_waveforms = generate_basic_waveforms(num_points)
-    saveBasicWaveforms(basic_waveforms, folderBasicWaveforms)
+    basic_waveforms = generate_basic_waveforms(samples)
+    SaveBasicWaveforms(basic_waveforms, folderBasicWaveforms)
 
-    # Create an additive synthesis waveform (e.g., 1st, 2nd, and 3rd harmonics)
-    additive_waveform_01 = create_additive_waveform({1: 1.0, 2: 0.5, 3: 0.25}, num_points)
-    save_waveform_to_csv(additive_waveform_01, f"{folderAdditiveWaveforms}ADDITIVE_01.csv")
+    # Create a fourier wavetable
+    SaveWavetableToCsv(GenerateProgressiveWavetable(basic_waveforms["SQUARE"]), f"{folderWavetables}SQUARE_01.csv")
+    SaveWavetableToCsv(GenerateProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"]), f"{folderWavetables}SQUARE_LIMITED_01.csv")
+    SaveWavetableToCsv(GenerateProgressiveWavetable(basic_waveforms["SAW"]), f"{folderWavetables}SAW_01.csv")
 
-    # Create a Fourier synthesis waveform with 5 harmonics
-    fourier_waveform_01 = create_fourier_waveform(5, num_points)
-    save_waveform_to_csv(fourier_waveform_01, f"{folderFourierWaveforms}FOURIER_01.csv")
+    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE"], transformation="harmonics"), f"{folderWavetables}SQUARE_02.csv")
+    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"], transformation="harmonics"), f"{folderWavetables}SQUARE_LIMITED_02.csv")
+    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SAW"], transformation="harmonics"), f"{folderWavetables}SAW_02.csv")
+
+    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE"], transformation="smoothing"), f"{folderWavetables}SQUARE_03.csv")
+    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SQUARE_LIMITED"], transformation="smoothing"), f"{folderWavetables}SQUARE_LIMITED_03.csv")
+    SaveWavetableToCsv(GenerateCustomProgressiveWavetable(basic_waveforms["SAW"], transformation="smoothing"), f"{folderWavetables}SAW_03.csv")
+
+    SaveWavetableToCsv(GenerateWaveformProgression(basic_waveforms["SQUARE"], basic_waveforms["SQUARE_LIMITED"]), f"{folderWavetables}SQUARE_04.csv")
+    SaveWavetableToCsv(GenerateWaveformProgression(basic_waveforms["SQUARE_LIMITED"], basic_waveforms["SAW"]), f"{folderWavetables}SQUARE_LIMITED_04.csv")
+    SaveWavetableToCsv(GenerateWaveformProgression(basic_waveforms["SAW"], basic_waveforms["FOURIER_01"]), f"{folderWavetables}SAW_04.csv")
 
     # exponential_decay_waveform_01 = generate_exponential_decay(num_points)
     # gaussian_waveform_01 = generate_gaussian_wave(num_points)
     # pulse_train_wavwform_01 = generate_pulse_train(num_points)
     # polynomial_wave_waveform_01 = generate_polynomial_wave(num_points, [0,-2,1, -3,1])
     # square_with_duty_cycle_01 = generate_square_with_duty_cycle(num_points)
-
-    # # Mix waveforms (e.g., sine and sawtooth)
-    # mixed_waveform_01 = mix_waveforms(
-    #     {"1": basic_waveforms["SINE"], "2": basic_waveforms["SAW"]},
-    #     {"1": 0.7, "2": 0.3}
-    # )
-    # mixed_waveform_02 = mix_waveforms(
-    #     {"1": basic_waveforms["SINE"], "2": pulse_train_wavwform_01},
-    #     {"1": 0.7, "2": 0.3}
-    # )
-    # mixed_waveform_03 = mix_waveforms(
-    #     {"1": basic_waveforms["SINE"], "2": basic_waveforms["RAMP"]},
-    #     {"1": 0.7, "2": 0.3}
-    # )
-    # mixed_waveform_04 = mix_waveforms(
-    #     {
-    #         "1": basic_waveforms["SQUARE"],
-    #         "2": pulse_train_wavwform_01,
-    #         "3": polynomial_wave_waveform_01,
-    #         "4": exponential_decay_waveform_01 * -1,
-    #         "5": basic_waveforms["RAMP"],
-    #         "6": exponential_decay_waveform_01
-    #     },
-    #     {
-    #         "1": 0.05,
-    #         "2": 0.05,
-    #         "3": 0.05,
-    #         "4": 0.4,
-    #         "5": 0.1,
-    #         "6": 0.45
-    #     }
-    # )
 
     # # Save all waveforms to CSV
     
@@ -369,5 +474,5 @@ if __name__ == "__main__":
     # max_harmonics = 16  # Maximum number of harmonics
     # generateFourierWavetable.generate(folderFourierWavetable, folderHeader, num_points, num_waveforms, max_harmonics)
 
-    plotLookupTablesFromFolderInTabs.plot_lookup_tables_in_tabs(folder)
+    PlotLookupTablesFromFolderInTabs.plot_lookup_tables_in_tabs(folder)
 

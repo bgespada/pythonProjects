@@ -29,7 +29,7 @@ def load_lookup_tables(folder_path, wavetable_split=256):
     return lookup_tables
 
 # Function: Plot Tables Distributed by Columns (with Scales and Values)
-def plot_tab_with_columns(figure, lookup_tables, folder_name, num_columns=3):
+def plot_tab_with_columns(figure, lookup_tables, folder_name, num_columns=8):
     num_tables = len(lookup_tables)
     num_rows = -(-num_tables // num_columns)  # Ceiling division to calculate rows
     figure.clear()  # Clear any existing plots
