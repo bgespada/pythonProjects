@@ -282,25 +282,42 @@ class MidiDeviceSelector:
         self.latency_combo.grid(row=4, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
     
     def _load_devices(self) -> None:
-        """Load and display MIDI devices based on selected type."""
+        """Load and display MIDI devices based on selected type. Preserve selection if possible."""
+        # Save current selection
+        prev_selection = None
+        selection = self.device_listbox.curselection()
+        if selection:
+            prev_selection = self.device_listbox.get(selection[0])
+        elif hasattr(self, 'selected_device') and self.selected_device:
+            prev_selection = self.selected_device
+
         self.device_listbox.delete(0, tk.END)
-        
+
         device_type = self.device_filter.value if hasattr(self.device_filter, 'value') else self.device_filter.get()
-        
+
         if device_type == 'input' or self.device_type == 'input':
             devices = self.discoverer.get_input_devices()
             device_label = "Input"
         else:
             devices = self.discoverer.get_output_devices()
             device_label = "Output"
-        
+
+        found_index = None
         if devices:
-            for device in devices:
+            for idx, device in enumerate(devices):
                 self.device_listbox.insert(tk.END, device)
+                if prev_selection and device == prev_selection:
+                    found_index = idx
             self.status_label.config(
                 text=f"Found {len(devices)} {device_label.lower()} device(s)",
                 foreground="green"
             )
+            # Restore previous selection if possible
+            if found_index is not None:
+                self.device_listbox.selection_set(found_index)
+                self.device_listbox.see(found_index)
+                self.selected_device = devices[found_index]
+                self._set_midi_config_enabled(True)
         else:
             self.status_label.config(
                 text=f"No {device_label.lower()} devices found",
@@ -313,6 +330,10 @@ class MidiDeviceSelector:
         if selection:
             # Enable MIDI config frame when a device is selected
             self._set_midi_config_enabled(True)
+            self.selected_device = self.device_listbox.get(selection[0])
+
+    # Always remember the last selected device, even if focus changes
+    # Do NOT clear self.selected_device unless user explicitly selects a different device or cancels
     
     def _on_device_double_click(self, event) -> None:
         """Handle double-click on device in listbox."""
@@ -321,16 +342,16 @@ class MidiDeviceSelector:
     def _on_select(self) -> None:
         """Handle select button click."""
         selection = self.device_listbox.curselection()
-        
-        if not selection:
+        # Only require a selection if no device was ever selected
+        if not selection and not self.selected_device:
             messagebox.showwarning("No Selection", "Please select a device from the list!")
             return
-        
-        self.selected_device = self.device_listbox.get(selection[0])
-        
+        if selection:
+            self.selected_device = self.device_listbox.get(selection[0])
+
         # Capture MIDI configuration
         self.midi_config = self.midi_config_frame.get_config()
-        
+
         # Capture audio configuration if enabled
         if self.include_audio_config:
             try:
@@ -345,15 +366,15 @@ class MidiDeviceSelector:
             except Exception as e:
                 messagebox.showerror("Configuration Error", f"Error reading audio config: {e}")
                 return
-        
+
         if self.callback:
             self.callback(self.selected_device)
-        
+
         self.status_label.config(
             text=f"Selected: {self.selected_device}",
             foreground="green"
         )
-        
+
         if self.is_root_owner:
             self.root.after(500, self.root.quit)
         else:
