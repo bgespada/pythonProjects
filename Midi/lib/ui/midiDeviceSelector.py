@@ -44,6 +44,9 @@ class MidiDeviceSelector:
             self.root = tk.Toplevel(parent)
             self.is_root_owner = False
             self.is_toplevel = True
+            # Make window modal
+            self.root.transient(parent)
+            self.root.grab_set()
         
         self.root.title(title)
         self.root.geometry("500x400")

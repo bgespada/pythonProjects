@@ -79,12 +79,12 @@ class MidiUI:
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
         
-        select_device_btn = ttk.Button(
+        self.select_device_btn = ttk.Button(
             button_frame,
             text="Select Device",
             command=self._on_select_device
         )
-        select_device_btn.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        self.select_device_btn.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
         
         disconnect_btn = ttk.Button(
             button_frame,
@@ -139,6 +139,9 @@ class MidiUI:
     def _on_select_device(self) -> None:
         """Open device selector dialog."""
         try:
+            # Disable select button to prevent multiple dialogs
+            self.select_device_btn.config(state=tk.DISABLED)
+            
             selector = MidiDeviceSelector(
                 parent=self.root,
                 device_type='output',
@@ -152,6 +155,9 @@ class MidiUI:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open device selector: {e}")
             self._update_status(f"Error: {e}", "red")
+        finally:
+            # Re-enable select button after dialog closes
+            self.select_device_btn.config(state=tk.NORMAL)
     
     def _on_device_selected(self, device: str) -> None:
         """Handle device selection callback."""
