@@ -1,8 +1,11 @@
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional
 from pathlib import Path
 import sys
+from .statusBar import StatusBar
+
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -33,7 +36,7 @@ class MidiUI:
         
         # UI components
         self.device_label: Optional[ttk.Label] = None
-        self.status_label: Optional[ttk.Label] = None
+        self.status_bar: Optional[StatusBar] = None
         self.main_frame: Optional[ttk.Frame] = None
         self.device_frame: Optional[DeviceSelectionFrame] = None
         
@@ -89,15 +92,8 @@ class MidiUI:
         placeholder.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Status bar
-        status_frame = ttk.Frame(self.main_frame)
-        status_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
-        
-        self.status_label = ttk.Label(
-            status_frame,
-            text="Ready",
-            foreground="blue"
-        )
-        self.status_label.pack(side=tk.LEFT)
+        self.status_bar = StatusBar(self.main_frame, initial_text="Ready", initial_color="blue")
+        self.status_bar.grid(row=3, column=0, sticky=(tk.W, tk.E))
         
         # Window close handler
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -128,6 +124,15 @@ class MidiUI:
                 # Get MIDI config from selector
                 midi_config = selector.get_midi_config()
                 device_mode = midi_config.device_mode if midi_config else 'output'
+                # Update MIDI channel in status bar
+                if midi_config and hasattr(midi_config, 'channel') and midi_config.channel not in (None, "All Channels"):
+                    try:
+                        channel_num = int(midi_config.channel)
+                    except Exception:
+                        channel_num = None
+                else:
+                    channel_num = None
+                self._update_midi_channel(channel_num)
                 self._connect_device(device, device_mode=device_mode)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open device selector: {e}")
@@ -185,14 +190,22 @@ class MidiUI:
     
     def _update_status(self, message: str, color: str = "blue") -> None:
         """
-        Update status bar message.
-        
+        Update status bar main info message.
         Args:
             message (str): Status message
             color (str): Message color
         """
-        if self.status_label:
-            self.status_label.config(text=message, foreground=color)
+        if self.status_bar:
+            self.status_bar.set_info(message, color)
+
+    def _update_midi_channel(self, channel: int = None):
+        """
+        Update the status bar MIDI channel section.
+        Args:
+            channel (int): MIDI channel number (1-based), or None to clear
+        """
+        if self.status_bar:
+            self.status_bar.set_channel(channel)
     
     def _on_closing(self) -> None:
         """Handle window closing."""
