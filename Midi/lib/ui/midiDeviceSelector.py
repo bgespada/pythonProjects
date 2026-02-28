@@ -60,9 +60,9 @@ class MidiDeviceSelector:
             self.root.grab_set()
         
         self.root.title(title)
-        window_height = 750 if include_audio_config else 600
-        self.root.geometry(f"500x{window_height}")
-        self.root.resizable(True, True)
+        window_height = 700 if include_audio_config else 420
+        self.root.geometry(f"380x{window_height}")
+        self.root.resizable(False, False)
         
         self._create_widgets()
         self._load_devices()
@@ -70,7 +70,7 @@ class MidiDeviceSelector:
     def _create_widgets(self) -> None:
         """Create the GUI widgets."""
         # Main frame
-        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame = ttk.Frame(self.root, padding="4")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Configure grid weights for responsiveness
@@ -83,14 +83,14 @@ class MidiDeviceSelector:
         title_label = ttk.Label(
             main_frame,
             text=f"Select MIDI Device ({self.device_type.upper()})",
-            font=("Arial", 12, "bold")
+            font=("Arial", 10, "bold")
         )
-        title_label.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
+        title_label.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
         
         # Device type selection (if 'both' is selected)
         if self.device_type == 'both':
-            filter_frame = ttk.LabelFrame(main_frame, text="Device Type", padding="5")
-            filter_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+            filter_frame = ttk.LabelFrame(main_frame, text="Device Type", padding="2")
+            filter_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 4))
             filter_frame.columnconfigure(0, weight=1)
             
             self.device_filter = tk.StringVar(value='output')
@@ -117,8 +117,8 @@ class MidiDeviceSelector:
             row_offset = 1
         
         # Listbox with scrollbar
-        list_frame = ttk.LabelFrame(main_frame, text="Available Devices", padding="5")
-        list_frame.grid(row=row_offset, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        list_frame = ttk.LabelFrame(main_frame, text="Available Devices", padding="2")
+        list_frame.grid(row=row_offset, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 4))
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
         
@@ -130,8 +130,8 @@ class MidiDeviceSelector:
         self.device_listbox = tk.Listbox(
             list_frame,
             yscrollcommand=scrollbar.set,
-            height=10,
-            font=("Arial", 10)
+            height=6,
+            font=("Arial", 9)
         )
         self.device_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.config(command=self.device_listbox.yview)
@@ -149,25 +149,25 @@ class MidiDeviceSelector:
         
         # MIDI configuration section
         self.midi_config_frame = MidiConfigFrame(main_frame)
-        self.midi_config_frame.grid(row=midi_config_row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.midi_config_frame.grid(row=midi_config_row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(4, 0))
         self._set_midi_config_enabled(False)  # Disabled initially
         
         # Button frame (below MIDI config)
         button_row = midi_config_row + 1
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=button_row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        button_frame.grid(row=button_row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(4, 0))
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
         button_frame.columnconfigure(2, weight=1)
         
         # Refresh button
         refresh_btn = ttk.Button(button_frame, text="Refresh", command=self._load_devices)
-        refresh_btn.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        
+        refresh_btn.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 2))
+
         # Select button
         select_btn = ttk.Button(button_frame, text="Select", command=self._on_select)
-        select_btn.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 5))
-        
+        select_btn.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 2))
+
         # Cancel button
         cancel_btn = ttk.Button(button_frame, text="Cancel", command=self._on_cancel)
         cancel_btn.grid(row=0, column=2, sticky=(tk.W, tk.E))
@@ -175,7 +175,7 @@ class MidiDeviceSelector:
         status_row = button_row + 1
         
         # Status label
-        self.status_label = ttk.Label(main_frame, text="", foreground="blue")
+        self.status_label = ttk.Label(main_frame, text="", foreground="blue", font=("Arial", 8))
         self.status_label.grid(row=status_row, column=0, columnspan=2, sticky=tk.W)
     
     def _set_midi_config_enabled(self, enabled: bool) -> None:
