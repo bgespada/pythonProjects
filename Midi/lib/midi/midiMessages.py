@@ -9,17 +9,19 @@ class MidiMessages:
     The MIDI device should be injected as a parameter (obtained from MidiDiscoverer).
     """
     
-    def __init__(self, device: str):
+    def __init__(self, device: str, device_type: str = 'output'):
         """
         Initialize MidiMessages with a MIDI device.
         
         Args:
             device (str): Device name (from MidiDiscoverer) or mido connection object
+            device_type (str): 'input', 'output', or 'both' (default: 'output')
         
         Raises:
             Exception: If device connection fails
         """
         self.device_name = device if isinstance(device, str) else str(device)
+        self.device_type = device_type
         self.input_port: Optional[mido.ports.BaseInput] = None
         self.output_port: Optional[mido.ports.BaseOutput] = None
         self._connect_device(device)
@@ -34,21 +36,35 @@ class MidiMessages:
         Raises:
             Exception: If device connection fails
         """
-        try:
-            # Try to open as output device
-            self.output_port = mido.open_output(device)
-            print(f"Connected to MIDI output device: {device}")
-        except Exception as e:
-            print(f"Warning: Could not open output port for {device}: {e}")
+        output_error = None
+        input_error = None
         
-        try:
-            # Try to open as input device
-            self.input_port = mido.open_input(device)
-            print(f"Connected to MIDI input device: {device}")
-        except Exception as e:
-            print(f"Warning: Could not open input port for {device}: {e}")
+        # Try to open as output device if requested
+        if self.device_type in ('output', 'both'):
+            try:
+                self.output_port = mido.open_output(device)
+                print(f"Connected to MIDI output device: {device}")
+            except Exception as e:
+                output_error = e
+                if self.device_type == 'output':
+                    print(f"Warning: Could not open output port for {device}: {e}")
         
-        if not self.output_port and not self.input_port:
+        # Try to open as input device if requested
+        if self.device_type in ('input', 'both'):
+            try:
+                self.input_port = mido.open_input(device)
+                print(f"Connected to MIDI input device: {device}")
+            except Exception as e:
+                input_error = e
+                if self.device_type == 'input':
+                    print(f"Warning: Could not open input port for {device}: {e}")
+        
+        # Check if at least one connection succeeded based on device_type
+        if self.device_type == 'output' and not self.output_port:
+            raise Exception(f"Failed to connect to MIDI output device: {device}")
+        elif self.device_type == 'input' and not self.input_port:
+            raise Exception(f"Failed to connect to MIDI input device: {device}")
+        elif self.device_type == 'both' and not self.output_port and not self.input_port:
             raise Exception(f"Failed to connect to MIDI device: {device}")
     
     def send_note_on(self, note: int, velocity: int = 64, channel: int = 0) -> None:
@@ -161,10 +177,12 @@ class MidiMessages:
         if self.output_port:
             self.output_port.close()
             print(f"Closed MIDI output: {self.device_name}")
+            self.output_port = None
         
         if self.input_port:
             self.input_port.close()
             print(f"Closed MIDI input: {self.device_name}")
+            self.input_port = None
     
     def __del__(self) -> None:
         """Ensure ports are closed when object is destroyed."""

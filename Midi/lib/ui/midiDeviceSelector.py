@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple, Dict
 from pathlib import Path
 import sys
 
@@ -8,6 +8,9 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from soundCard.midiDiscoverer import MidiDiscoverer
+from soundCard.soundCardDiscoverer import SoundCardDiscoverer
+from soundCard.soundCardConfig import SoundCardConfig, AudioConfig
+from .midiConfigFrame import MidiConfigFrame, MidiConfig
 
 
 class MidiDeviceSelector:
@@ -20,7 +23,8 @@ class MidiDeviceSelector:
                  parent=None,
                  device_type: str = 'both',
                  callback: Optional[Callable[[str], None]] = None,
-                 title: str = "MIDI Device Selector"):
+                 title: str = "MIDI Device Selector",
+                 include_audio_config: bool = False):
         """
         Initialize MidiDeviceSelector.
         
@@ -29,11 +33,18 @@ class MidiDeviceSelector:
             device_type (str): 'input', 'output', or 'both'
             callback (Optional[Callable]): Function to call when device is selected
             title (str): Window title
+            include_audio_config (bool): Include sound card configuration options
         """
         self.device_type = device_type
         self.callback = callback
         self.selected_device: Optional[str] = None
+        self.include_audio_config = include_audio_config
+        self.audio_config: Optional[AudioConfig] = None
+        self.midi_config: Optional[MidiConfig] = None
+        
         self.discoverer = MidiDiscoverer()
+        self.sound_discoverer = SoundCardDiscoverer() if include_audio_config else None
+        self.sound_config = SoundCardConfig() if include_audio_config else None
         
         # Create window based on parent
         if parent is None:
@@ -49,7 +60,8 @@ class MidiDeviceSelector:
             self.root.grab_set()
         
         self.root.title(title)
-        self.root.geometry("500x400")
+        window_height = 750 if include_audio_config else 600
+        self.root.geometry(f"500x{window_height}")
         self.root.resizable(True, True)
         
         self._create_widgets()
@@ -124,12 +136,26 @@ class MidiDeviceSelector:
         self.device_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.config(command=self.device_listbox.yview)
         
-        # Bind double-click event
+        # Bind double-click event and single selection
         self.device_listbox.bind('<Double-Button-1>', self._on_device_double_click)
+        self.device_listbox.bind('<<ListboxSelect>>', self._on_device_selected)
         
-        # Button frame
+        # Audio configuration section (if enabled)
+        if self.include_audio_config:
+            self._create_audio_config_widgets(main_frame, row_offset + 1)
+            midi_config_row = row_offset + 2
+        else:
+            midi_config_row = row_offset + 1
+        
+        # MIDI configuration section
+        self.midi_config_frame = MidiConfigFrame(main_frame)
+        self.midi_config_frame.grid(row=midi_config_row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        self._set_midi_config_enabled(False)  # Disabled initially
+        
+        # Button frame (below MIDI config)
+        button_row = midi_config_row + 1
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=row_offset + 1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        button_frame.grid(row=button_row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
         button_frame.columnconfigure(2, weight=1)
@@ -146,9 +172,114 @@ class MidiDeviceSelector:
         cancel_btn = ttk.Button(button_frame, text="Cancel", command=self._on_cancel)
         cancel_btn.grid(row=0, column=2, sticky=(tk.W, tk.E))
         
+        status_row = button_row + 1
+        
         # Status label
         self.status_label = ttk.Label(main_frame, text="", foreground="blue")
-        self.status_label.grid(row=row_offset + 2, column=0, columnspan=2, sticky=tk.W)
+        self.status_label.grid(row=status_row, column=0, columnspan=2, sticky=tk.W)
+    
+    def _set_midi_config_enabled(self, enabled: bool) -> None:
+        """
+        Enable or disable MIDI configuration widgets.
+        
+        Args:
+            enabled (bool): True to enable, False to disable
+        """
+        state = tk.NORMAL if enabled else tk.DISABLED
+        
+        # Recursively set state for all children in the frame
+        def set_state(widget, desired_state):
+            if isinstance(widget, tk.Widget):
+                try:
+                    widget.config(state=desired_state)
+                except tk.TclError:
+                    pass
+                
+                # Recursively set state for children
+                for child in widget.winfo_children():
+                    set_state(child, desired_state)
+        
+        set_state(self.midi_config_frame.frame, state)
+    
+    def _create_audio_config_widgets(self, parent: ttk.Frame, row: int) -> None:
+        """Create audio configuration widgets."""
+        # Audio configuration frame
+        audio_frame = ttk.LabelFrame(parent, text="Audio Configuration", padding="5")
+        audio_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        audio_frame.columnconfigure(1, weight=1)
+        
+        # Sound Card selection
+        ttk.Label(audio_frame, text="Audio Device:").grid(row=0, column=0, sticky=tk.W)
+        self.audio_device_var = tk.StringVar()
+        audio_devices = self.sound_discoverer.get_device_info() if self.sound_discoverer else []
+        audio_device_names = [f"{d['name']}" for d in audio_devices]
+        
+        self.audio_device_combo = ttk.Combobox(
+            audio_frame,
+            textvariable=self.audio_device_var,
+            values=audio_device_names,
+            state='readonly',
+            width=30
+        )
+        self.audio_device_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
+        if audio_device_names:
+            self.audio_device_combo.current(0)
+        
+        # Sample Rate
+        ttk.Label(audio_frame, text="Sample Rate:").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
+        self.sample_rate_var = tk.StringVar(value="44100")
+        sample_rates = ["44100", "48000", "96000", "192000"]
+        
+        self.sample_rate_combo = ttk.Combobox(
+            audio_frame,
+            textvariable=self.sample_rate_var,
+            values=sample_rates,
+            state='readonly',
+            width=12
+        )
+        self.sample_rate_combo.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
+        
+        # Channels
+        ttk.Label(audio_frame, text="Channels:").grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        self.channels_var = tk.StringVar(value="2")
+        channels = ["1 (Mono)", "2 (Stereo)", "4", "8"]
+        
+        self.channels_combo = ttk.Combobox(
+            audio_frame,
+            textvariable=self.channels_var,
+            values=channels,
+            state='readonly',
+            width=12
+        )
+        self.channels_combo.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
+        
+        # Block Size
+        ttk.Label(audio_frame, text="Block Size:").grid(row=3, column=0, sticky=tk.W, pady=(10, 0))
+        self.blocksize_var = tk.StringVar(value="2048")
+        block_sizes = ["256", "512", "1024", "2048", "4096"]
+        
+        self.blocksize_combo = ttk.Combobox(
+            audio_frame,
+            textvariable=self.blocksize_var,
+            values=block_sizes,
+            state='readonly',
+            width=12
+        )
+        self.blocksize_combo.grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
+        
+        # Latency
+        ttk.Label(audio_frame, text="Latency:").grid(row=4, column=0, sticky=tk.W, pady=(10, 0))
+        self.latency_var = tk.StringVar(value="low")
+        latencies = ["low", "medium", "high"]
+        
+        self.latency_combo = ttk.Combobox(
+            audio_frame,
+            textvariable=self.latency_var,
+            values=latencies,
+            state='readonly',
+            width=12
+        )
+        self.latency_combo.grid(row=4, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
     
     def _load_devices(self) -> None:
         """Load and display MIDI devices based on selected type."""
@@ -176,6 +307,13 @@ class MidiDeviceSelector:
                 foreground="red"
             )
     
+    def _on_device_selected(self, event) -> None:
+        """Handle device selection in listbox."""
+        selection = self.device_listbox.curselection()
+        if selection:
+            # Enable MIDI config frame when a device is selected
+            self._set_midi_config_enabled(True)
+    
     def _on_device_double_click(self, event) -> None:
         """Handle double-click on device in listbox."""
         self._on_select()
@@ -189,6 +327,24 @@ class MidiDeviceSelector:
             return
         
         self.selected_device = self.device_listbox.get(selection[0])
+        
+        # Capture MIDI configuration
+        self.midi_config = self.midi_config_frame.get_config()
+        
+        # Capture audio configuration if enabled
+        if self.include_audio_config:
+            try:
+                channels_str = self.channels_var.get().split()[0]
+                self.audio_config = AudioConfig(
+                    device_id=self.audio_device_combo.current(),
+                    sample_rate=int(self.sample_rate_var.get()),
+                    channels=int(channels_str),
+                    blocksize=int(self.blocksize_var.get()),
+                    latency=self.latency_var.get()
+                )
+            except Exception as e:
+                messagebox.showerror("Configuration Error", f"Error reading audio config: {e}")
+                return
         
         if self.callback:
             self.callback(self.selected_device)
@@ -221,6 +377,33 @@ class MidiDeviceSelector:
             Optional[str]: Selected device name or None
         """
         return self.selected_device
+    
+    def get_audio_config(self) -> Optional[AudioConfig]:
+        """
+        Get the audio configuration (if included).
+        
+        Returns:
+            Optional[AudioConfig]: Audio configuration or None
+        """
+        return self.audio_config
+    
+    def get_midi_config(self) -> Optional[MidiConfig]:
+        """
+        Get the MIDI configuration.
+        
+        Returns:
+            Optional[MidiConfig]: MIDI configuration or None
+        """
+        return self.midi_config
+    
+    def get_selection(self) -> Tuple[Optional[str], Optional[AudioConfig], Optional[MidiConfig]]:
+        """
+        Get device, audio configuration, and MIDI configuration.
+        
+        Returns:
+            Tuple: (device_name, audio_config, midi_config)
+        """
+        return (self.selected_device, self.audio_config, self.midi_config)
     
     def show(self) -> Optional[str]:
         """
@@ -258,6 +441,21 @@ def open_midi_device_selector(device_type: str = 'both') -> Optional[str]:
     """
     selector = MidiDeviceSelector(device_type=device_type)
     return selector.show()
+
+
+def open_midi_device_selector_with_audio(device_type: str = 'both') -> Tuple[Optional[str], Optional[AudioConfig], Optional[MidiConfig]]:
+    """
+    Convenience function to open MIDI device selector with audio and MIDI configuration.
+    
+    Args:
+        device_type (str): 'input', 'output', or 'both'
+    
+    Returns:
+        Tuple: (device_name, audio_config, midi_config)
+    """
+    selector = MidiDeviceSelector(device_type=device_type, include_audio_config=True)
+    selector.show()
+    return selector.get_selection()
 
 
 # if __name__ == "__main__":

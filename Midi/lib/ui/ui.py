@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from soundCard.midiDiscoverer import MidiDiscoverer
 from midi.midiMessages import MidiMessages
 from .midiDeviceSelector import MidiDeviceSelector
+from .deviceSelectionFrame import DeviceSelectionFrame
 
 
 class MidiUI:
@@ -34,6 +35,7 @@ class MidiUI:
         self.device_label: Optional[ttk.Label] = None
         self.status_label: Optional[ttk.Label] = None
         self.main_frame: Optional[ttk.Frame] = None
+        self.device_frame: Optional[DeviceSelectionFrame] = None
         
         self._create_widgets()
         self._initialize_midi()
@@ -59,41 +61,12 @@ class MidiUI:
         title_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 15))
         
         # Device selection frame
-        device_frame = ttk.LabelFrame(self.main_frame, text="MIDI Device", padding="10")
-        device_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
-        device_frame.columnconfigure(1, weight=1)
-        
-        # Device label
-        ttk.Label(device_frame, text="Current Device:").grid(row=0, column=0, sticky=tk.W)
-        self.device_label = ttk.Label(
-            device_frame,
-            text="No device selected",
-            foreground="red",
-            font=("Arial", 10, "bold")
+        self.device_frame = DeviceSelectionFrame(
+            parent=self.main_frame,
+            on_select=self._on_select_device,
+            on_disconnect=self._on_disconnect
         )
-        self.device_label.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
-        
-        # Device selection buttons
-        button_frame = ttk.Frame(device_frame)
-        button_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
-        button_frame.columnconfigure(0, weight=1)
-        button_frame.columnconfigure(1, weight=1)
-        
-        self.select_device_btn = ttk.Button(
-            button_frame,
-            text="Select Device",
-            command=self._on_select_device
-        )
-        self.select_device_btn.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        
-        disconnect_btn = ttk.Button(
-            button_frame,
-            text="Disconnect",
-            command=self._on_disconnect,
-            state=tk.DISABLED
-        )
-        disconnect_btn.grid(row=0, column=1, sticky=(tk.W, tk.E))
-        self.disconnect_btn = disconnect_btn
+        self.device_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
         
         # Content frame (for subclasses to add custom widgets)
         self.content_frame = ttk.LabelFrame(
@@ -140,48 +113,50 @@ class MidiUI:
         """Open device selector dialog."""
         try:
             # Disable select button to prevent multiple dialogs
-            self.select_device_btn.config(state=tk.DISABLED)
+            self.device_frame.disable_select_button()
             
             selector = MidiDeviceSelector(
                 parent=self.root,
                 device_type='output',
-                callback=self._on_device_selected,
                 title="Select MIDI Output Device"
             )
             device = selector.show()
             
             if device:
-                self._connect_device(device)
+                # Get MIDI config from selector
+                midi_config = selector.get_midi_config()
+                device_mode = midi_config.device_mode if midi_config else 'output'
+                self._connect_device(device, device_mode=device_mode)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open device selector: {e}")
             self._update_status(f"Error: {e}", "red")
         finally:
             # Re-enable select button after dialog closes
-            self.select_device_btn.config(state=tk.NORMAL)
+            self.device_frame.enable_select_button()
     
-    def _on_device_selected(self, device: str) -> None:
-        """Handle device selection callback."""
-        self._connect_device(device)
-    
-    def _connect_device(self, device: str) -> None:
+    def _connect_device(self, device: str, device_mode: str = 'output') -> None:
         """
         Connect to a MIDI device.
         
         Args:
             device (str): Device name to connect to
+            device_mode (str): Device mode ('input', 'output', or 'both')
         """
+        # Prevent reconnecting to same device
+        if self.selected_device == device and self.midi_messages is not None:
+            return
+        
         try:
             # Disconnect from previous device if any
             if self.midi_messages:
                 self.midi_messages.close()
             
-            # Connect to new device
-            self.midi_messages = MidiMessages(device)
+            # Connect to new device with specified mode
+            self.midi_messages = MidiMessages(device, device_type=device_mode)
             self.selected_device = device
             
             # Update UI
-            self.device_label.config(text=device, foreground="green")
-            self.disconnect_btn.config(state=tk.NORMAL)
+            self.device_frame.set_device_name(device, connected=True)
             self._update_status(f"Connected to: {device}", "green")
             
             # Trigger onConnect hook for subclasses
@@ -198,8 +173,7 @@ class MidiUI:
                 self.midi_messages = None
             
             self.selected_device = None
-            self.device_label.config(text="No device selected", foreground="red")
-            self.disconnect_btn.config(state=tk.DISABLED)
+            self.device_frame.set_device_name("No device selected", connected=False)
             self._update_status("Disconnected", "blue")
             
             # Trigger onDisconnect hook for subclasses
