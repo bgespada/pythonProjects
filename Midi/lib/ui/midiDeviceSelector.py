@@ -35,13 +35,15 @@ class MidiDeviceSelector:
         self.selected_device: Optional[str] = None
         self.discoverer = MidiDiscoverer()
         
-        # Create root window if no parent provided
+        # Create window based on parent
         if parent is None:
             self.root = tk.Tk()
             self.is_root_owner = True
+            self.is_toplevel = False
         else:
-            self.root = parent
+            self.root = tk.Toplevel(parent)
             self.is_root_owner = False
+            self.is_toplevel = True
         
         self.root.title(title)
         self.root.geometry("500x400")
@@ -195,12 +197,18 @@ class MidiDeviceSelector:
         
         if self.is_root_owner:
             self.root.after(500, self.root.quit)
+        else:
+            # For Toplevel windows, just close the window
+            self.root.destroy()
     
     def _on_cancel(self) -> None:
         """Handle cancel button click."""
         self.selected_device = None
         if self.is_root_owner:
             self.root.quit()
+        else:
+            # For Toplevel windows, just close the window
+            self.root.destroy()
     
     def get_selected_device(self) -> Optional[str]:
         """
@@ -219,16 +227,20 @@ class MidiDeviceSelector:
         Returns:
             Optional[str]: Selected device name or None
         """
-        if not self.is_root_owner:
-            raise RuntimeError("Cannot call show() when parent window is provided")
-        
-        self.root.mainloop()
-        return self.selected_device
+        if self.is_root_owner:
+            self.root.mainloop()
+            return self.selected_device
+        else:
+            # For Toplevel windows, wait for it to close
+            self.root.wait_window()
+            return self.selected_device
     
     def close(self) -> None:
         """Close the window."""
         if self.is_root_owner:
             self.root.quit()
+        else:
+            self.root.destroy()
 
 
 def open_midi_device_selector(device_type: str = 'both') -> Optional[str]:
