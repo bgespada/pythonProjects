@@ -66,7 +66,9 @@ class MidiUI:
             on_select=self._on_select_device,
             on_disconnect=self._on_disconnect
         )
-        self.device_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        self.device_frame.frame.config(width=260)
+        self.device_frame.frame.grid_propagate(False)
+        self.device_frame.grid(row=1, column=0, sticky=tk.W, pady=(0, 6))
         
         # Content frame (for subclasses to add custom widgets)
         self.content_frame = ttk.LabelFrame(

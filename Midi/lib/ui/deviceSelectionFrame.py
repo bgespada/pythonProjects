@@ -25,39 +25,41 @@ class DeviceSelectionFrame:
         self.on_disconnect = on_disconnect
         
         # Create frame
-        self.frame = ttk.LabelFrame(parent, text="MIDI Device", padding="10")
+        self.frame = ttk.LabelFrame(parent, text="MIDI Device", padding="4")
+        self.frame.config(width=260, height=80)
+        self.frame.grid_propagate(False)
         
         # Device label
-        ttk.Label(self.frame, text="Current Device:").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(self.frame, text="Current Device:", font=("Arial", 9)).grid(row=0, column=0, sticky=tk.W)
         self.device_label = ttk.Label(
             self.frame,
             text="No device selected",
             foreground="red",
-            font=("Arial", 10, "bold")
+            font=("Arial", 9, "bold")
         )
-        self.device_label.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
-        self.frame.columnconfigure(1, weight=1)
+        self.device_label.grid(row=0, column=1, sticky=tk.W, padx=(6, 0))
+        self.frame.columnconfigure(1, weight=0)
         
         # Device selection buttons
         button_frame = ttk.Frame(self.frame)
-        button_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
-        button_frame.columnconfigure(0, weight=1)
-        button_frame.columnconfigure(1, weight=1)
-        
+        button_frame.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+
         self.select_device_btn = ttk.Button(
             button_frame,
-            text="Select Device",
-            command=self._on_select_clicked
+            text="Select",
+            command=self._on_select_clicked,
+            width=8
         )
-        self.select_device_btn.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        
+        self.select_device_btn.grid(row=0, column=0, padx=(0, 2))
+
         self.disconnect_btn = ttk.Button(
             button_frame,
             text="Disconnect",
             command=self._on_disconnect_clicked,
-            state=tk.DISABLED
+            state=tk.DISABLED,
+            width=12
         )
-        self.disconnect_btn.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        self.disconnect_btn.grid(row=0, column=1)
     
     def grid(self, **kwargs) -> None:
         """
