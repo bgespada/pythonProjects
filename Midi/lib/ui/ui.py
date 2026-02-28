@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox
 from typing import Optional
 from pathlib import Path
 import sys
-from .statusBar import StatusBar
+from .statusBarUi import StatusBar
 
 
 # Add parent directory to path for imports
@@ -12,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from soundCard.midiDiscoverer import MidiDiscoverer
 from midi.midiMessages import MidiMessages
-from .midiDeviceSelector import MidiDeviceSelector
-from .deviceSelectionFrame import DeviceSelectionFrame
+from .midiDeviceSelectorUi import MidiDeviceSelectorUi
+from .deviceSelectionFrameUi import DeviceSelectionFrameUi
 
 
 class MidiUI:
@@ -38,7 +38,7 @@ class MidiUI:
         self.device_label: Optional[ttk.Label] = None
         self.status_bar: Optional[StatusBar] = None
         self.main_frame: Optional[ttk.Frame] = None
-        self.device_frame: Optional[DeviceSelectionFrame] = None
+        self.device_frame: Optional[DeviceSelectionFrameUi] = None
         
         self._create_widgets()
         self._initialize_midi()
@@ -64,7 +64,7 @@ class MidiUI:
         title_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 15))
         
         # Device selection frame
-        self.device_frame = DeviceSelectionFrame(
+        self.device_frame = DeviceSelectionFrameUi(
             parent=self.main_frame,
             on_select=self._on_select_device,
             on_disconnect=self._on_disconnect
@@ -113,7 +113,7 @@ class MidiUI:
             # Disable select button to prevent multiple dialogs
             self.device_frame.disable_select_button()
             
-            selector = MidiDeviceSelector(
+            selector = MidiDeviceSelectorUi(
                 parent=self.root,
                 device_type='output',
                 title="Select MIDI Output Device"

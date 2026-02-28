@@ -10,10 +10,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from soundCard.midiDiscoverer import MidiDiscoverer
 from soundCard.soundCardDiscoverer import SoundCardDiscoverer
 from soundCard.soundCardConfig import SoundCardConfig, AudioConfig
-from .midiConfigFrame import MidiConfigFrame, MidiConfig
+from .midiConfigFrameUi import MidiConfigFrameUi, MidiConfig
 
 
-class MidiDeviceSelector:
+class MidiDeviceSelectorUi:
     """
     A tkinter-based GUI class for selecting MIDI input and/or output devices.
     Uses MidiDiscoverer to discover available devices.
@@ -148,7 +148,7 @@ class MidiDeviceSelector:
             midi_config_row = row_offset + 1
         
         # MIDI configuration section
-        self.midi_config_frame = MidiConfigFrame(main_frame)
+        self.midi_config_frame = MidiConfigFrameUi(main_frame)
         self.midi_config_frame.grid(row=midi_config_row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(4, 0))
         self._set_midi_config_enabled(False)  # Disabled initially
         
@@ -460,7 +460,7 @@ def open_midi_device_selector(device_type: str = 'both') -> Optional[str]:
     Returns:
         Optional[str]: Selected device name or None
     """
-    selector = MidiDeviceSelector(device_type=device_type)
+    selector = MidiDeviceSelectorUi(device_type=device_type)
     return selector.show()
 
 
@@ -474,7 +474,7 @@ def open_midi_device_selector_with_audio(device_type: str = 'both') -> Tuple[Opt
     Returns:
         Tuple: (device_name, audio_config, midi_config)
     """
-    selector = MidiDeviceSelector(device_type=device_type, include_audio_config=True)
+    selector = MidiDeviceSelectorUi(device_type=device_type, include_audio_config=True)
     selector.show()
     return selector.get_selection()
 

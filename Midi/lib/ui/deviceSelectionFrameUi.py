@@ -3,7 +3,7 @@ from tkinter import ttk
 from typing import Callable, Optional
 
 
-class DeviceSelectionFrame:
+class DeviceSelectionFrameUi:
     """
     A reusable frame component for MIDI device selection.
     Displays current device and provides Select/Disconnect buttons.

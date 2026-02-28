@@ -14,7 +14,7 @@ class MidiConfig:
     note_off_mode: str = 'note_off'  # 'note_off' or 'note_on_zero_velocity'
 
 
-class MidiConfigFrame:
+class MidiConfigFrameUi:
     """
     A reusable frame component for MIDI configuration.
     Allows users to configure MIDI channel, velocity, octave, and other settings.
