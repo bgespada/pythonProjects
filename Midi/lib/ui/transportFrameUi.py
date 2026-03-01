@@ -14,7 +14,7 @@ class TransportFrameUi(ttk.LabelFrame):
         self._clock_running = False
         self._clock_job = None
         self._build_ui()
-        self.config(width=260, height=80)
+        self.config(width=320, height=80)
         self.grid_propagate(False)
 
     def _build_ui(self):

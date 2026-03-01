@@ -26,7 +26,7 @@ class MidiUI:
         """Initialize the main MIDI UI application."""
         self.root = tk.Tk()
         self.root.title("MIDI Device Control")
-        self.root.geometry("600x500")
+        self.root.geometry("700x500")
         self.root.resizable(False, False)
         
         # MIDI components
@@ -64,26 +64,31 @@ class MidiUI:
         title_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 15))
         
 
+        # Container for device and transport frames (fixed width, no stretching)
+        self.top_frames_container = ttk.Frame(self.main_frame)
+        self.top_frames_container.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
+
         # Device selection frame (left, top)
         self.device_frame = DeviceSelectionFrameUi(
-            parent=self.main_frame,
+            parent=self.top_frames_container,
             on_select=self._on_select_device,
             on_disconnect=self._on_disconnect
         )
         self.device_frame.frame.config(width=260, height=80)
         self.device_frame.frame.grid_propagate(False)
-        self.device_frame.grid(row=1, column=0, sticky=tk.W, pady=(0, 6))
+        self.device_frame.grid(row=0, column=0, sticky=tk.W, padx=(0, 12))
 
-        # Transport frame (right, top)
+        # Transport frame (right, fixed after device frame)
         from .transportFrameUi import TransportFrameUi
         self.transport_frame = TransportFrameUi(
-            parent=self.main_frame,
+            parent=self.top_frames_container,
             midi_transport=None
         )
-        self.transport_frame.config(width=260, height=80)
+        self.transport_frame.config(width=340, height=80)
         self.transport_frame.grid_propagate(False)
-        self.transport_frame.grid(row=1, column=1, sticky=tk.W, pady=(0, 6))
-        self.main_frame.columnconfigure(1, weight=0)
+        self.transport_frame.grid(row=0, column=1, sticky=tk.W)
+        self.top_frames_container.columnconfigure(0, weight=0)
+        self.top_frames_container.columnconfigure(1, weight=0)
         # Disable transport buttons initially
         for btn in (self.transport_frame.start_btn, self.transport_frame.pause_btn, self.transport_frame.stop_btn):
             btn.config(state=tk.DISABLED)
