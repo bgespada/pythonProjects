@@ -27,7 +27,7 @@ class MidiUI:
         self.root = tk.Tk()
         self.root.title("MIDI Device Control")
         self.root.geometry("600x500")
-        self.root.resizable(True, True)
+        self.root.resizable(False, False)
         
         # MIDI components
         self.discoverer: Optional[MidiDiscoverer] = None
@@ -64,7 +64,7 @@ class MidiUI:
         title_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 15))
         
 
-        # Device selection frame (left)
+        # Device selection frame (left, top)
         self.device_frame = DeviceSelectionFrameUi(
             parent=self.main_frame,
             on_select=self._on_select_device,
@@ -74,7 +74,7 @@ class MidiUI:
         self.device_frame.frame.grid_propagate(False)
         self.device_frame.grid(row=1, column=0, sticky=tk.W, pady=(0, 6))
 
-        # Transport frame (right), initially disabled
+        # Transport frame (right, top)
         from .transportFrameUi import TransportFrameUi
         self.transport_frame = TransportFrameUi(
             parent=self.main_frame,
@@ -87,14 +87,14 @@ class MidiUI:
         # Disable transport buttons initially
         for btn in (self.transport_frame.start_btn, self.transport_frame.pause_btn, self.transport_frame.stop_btn):
             btn.config(state=tk.DISABLED)
-        
-        # Content frame (for subclasses to add custom widgets)
+
+        # Controls frame (below device and transport, full width)
         self.content_frame = ttk.LabelFrame(
             self.main_frame,
             text="Controls",
             padding="10"
         )
-        self.content_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 15))
+        self.content_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 15))
         self.content_frame.columnconfigure(0, weight=1)
         self.content_frame.rowconfigure(0, weight=1)
         
