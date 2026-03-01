@@ -13,9 +13,19 @@ class TransportFrameUi(ttk.LabelFrame):
         self.midi_transport = midi_transport
         self._clock_running = False
         self._clock_job = None
+        self._start_callbacks: list[Callable] = []
+        self._stop_callbacks:  list[Callable] = []
         self._build_ui()
         self.config(width=320, height=80)
         self.grid_propagate(False)
+
+    def add_start_callback(self, callback: Callable) -> None:
+        """Register a callback to be called when Start is pressed."""
+        self._start_callbacks.append(callback)
+
+    def add_stop_callback(self, callback: Callable) -> None:
+        """Register a callback to be called when Stop is pressed."""
+        self._stop_callbacks.append(callback)
 
     def _build_ui(self):
         # Label row (to match device frame)
@@ -62,6 +72,11 @@ class TransportFrameUi(ttk.LabelFrame):
         if self.midi_transport:
             self.midi_transport.start()
             self._start_clock()
+        for cb in self._start_callbacks:
+            try:
+                cb()
+            except Exception as e:
+                print(f"Start callback error: {e}")
 
     def _on_pause(self):
         if self.midi_transport:
@@ -72,6 +87,11 @@ class TransportFrameUi(ttk.LabelFrame):
         if self.midi_transport:
             self.midi_transport.stop()
             self._stop_clock()
+        for cb in self._stop_callbacks:
+            try:
+                cb()
+            except Exception as e:
+                print(f"Stop callback error: {e}")
 
     def _start_clock(self):
         if not self._clock_running:

@@ -26,7 +26,7 @@ class MidiUI:
         """Initialize the main MIDI UI application."""
         self.root = tk.Tk()
         self.root.title("MIDI Device Control")
-        self.root.geometry("700x500")
+        self.root.geometry("700x780")
         self.root.resizable(False, False)
         
         # MIDI components
@@ -40,6 +40,7 @@ class MidiUI:
         self.main_frame: Optional[ttk.Frame] = None
         self.device_frame: Optional[DeviceSelectionFrameUi] = None
         self.control_panel = None
+        self.sequencer_frame = None
         
         self._create_widgets()
         self._initialize_midi()
@@ -54,7 +55,8 @@ class MidiUI:
         self.main_frame = ttk.Frame(self.root, padding="10")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         self.main_frame.columnconfigure(0, weight=1)
-        self.main_frame.rowconfigure(2, weight=1)
+        self.main_frame.rowconfigure(2, weight=0)   # Controls: compact
+        self.main_frame.rowconfigure(3, weight=1)   # Sequencer: expands
         
         # Title
         title_label = ttk.Label(
@@ -108,10 +110,19 @@ class MidiUI:
         from .controls import ControlPanelUi
         self.control_panel = ControlPanelUi(self.content_frame)
         self.control_panel.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
+
+        # Sequencer frame (below controls, full width)
+        from .sequencer import SequencerFrameUi
+        self.sequencer_frame = SequencerFrameUi(self.main_frame)
+        self.sequencer_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 6))
+
+        # Wire transport start/stop → sequencer engine
+        self.transport_frame.add_start_callback(self.sequencer_frame.engine.start)
+        self.transport_frame.add_stop_callback(self.sequencer_frame.engine.stop)
+
         # Status bar
         self.status_bar = StatusBar(self.main_frame, initial_text="Ready", initial_color="blue")
-        self.status_bar.grid(row=3, column=0, sticky=(tk.W, tk.E))
+        self.status_bar.grid(row=4, column=0, sticky=(tk.W, tk.E))
         
         # Window close handler
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -193,6 +204,11 @@ class MidiUI:
                 self.control_panel.set_midi_messages(self.midi_messages)
                 if channel is not None:
                     self.control_panel.set_channel(max(0, channel - 1))  # convert to 0-based, clamp
+            # Wire up sequencer
+            if self.sequencer_frame:
+                self.sequencer_frame.set_midi_messages(self.midi_messages)
+                if channel is not None:
+                    self.sequencer_frame.set_channel(max(0, channel - 1))
             # Trigger onConnect hook for subclasses
             self.on_device_connected()
         except Exception as e:
@@ -212,6 +228,10 @@ class MidiUI:
             # Disconnect control panel
             if self.control_panel:
                 self.control_panel.set_midi_messages(None)
+            # Disconnect sequencer
+            if self.sequencer_frame:
+                self.sequencer_frame.engine.stop()
+                self.sequencer_frame.set_midi_messages(None)
             # Trigger onDisconnect hook for subclasses
             self.on_device_disconnected()
         except Exception as e:
