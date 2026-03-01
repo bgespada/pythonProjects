@@ -12,10 +12,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from soundCard.midiDiscoverer import MidiDiscoverer
 from midi.midiMessages import MidiMessages
+from midi.transport import MidiTransport
 from .midiDeviceSelectorUi import MidiDeviceSelectorUi
 from .deviceSelectionFrameUi import DeviceSelectionFrameUi
 from .controls import ControlPanelUi
 from .sequencer import SequencerFrameUi
+from .transportFrameUi import TransportFrameUi
 
 
 class MidiUI:
@@ -40,7 +42,10 @@ class MidiUI:
         self.device_label: Optional[ttk.Label] = None
         self.status_bar: Optional[StatusBar] = None
         self.main_frame: Optional[ttk.Frame] = None
+        self.top_frames_container: Optional[ttk.Frame] = None
         self.device_frame: Optional[DeviceSelectionFrameUi] = None
+        self.transport_frame: Optional[TransportFrameUi] = None
+        self.content_frame: Optional[ttk.LabelFrame] = None
         self.control_panel: Optional[ControlPanelUi] = None
         self.sequencer_frame: Optional[SequencerFrameUi] = None
         
@@ -49,27 +54,34 @@ class MidiUI:
     
     def _create_widgets(self) -> None:
         """Create the main UI widgets."""
-        # Configure grid weights
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
-        
-        # Main frame
+
         self.main_frame = ttk.Frame(self.root, padding="10")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         self.main_frame.columnconfigure(0, weight=1)
         self.main_frame.rowconfigure(2, weight=0)   # Controls: compact
         self.main_frame.rowconfigure(3, weight=1)   # Sequencer: expands
-        
-        # Title
+
+        self._create_title()
+        self._create_top_frames()
+        self._create_controls_and_sequencer()
+        self._create_status_bar()
+
+        # Window close handler
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+    def _create_title(self) -> None:
+        """Create top title label."""
         title_label = ttk.Label(
             self.main_frame,
             text="MIDI Device Controller",
             font=("Arial", 14, "bold")
         )
         title_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 15))
-        
 
-        # Container for device and transport frames (fixed width, no stretching)
+    def _create_top_frames(self) -> None:
+        """Create device and transport frames row."""
         self.top_frames_container = ttk.Frame(self.main_frame)
         self.top_frames_container.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(0, 6))
 
@@ -84,7 +96,6 @@ class MidiUI:
         self.device_frame.grid(row=0, column=0, sticky=tk.W, padx=(0, 12))
 
         # Transport frame (right, fixed after device frame)
-        from .transportFrameUi import TransportFrameUi
         self.transport_frame = TransportFrameUi(
             parent=self.top_frames_container,
             midi_transport=None
@@ -94,11 +105,10 @@ class MidiUI:
         self.transport_frame.grid(row=0, column=1, sticky=tk.W)
         self.top_frames_container.columnconfigure(0, weight=0)
         self.top_frames_container.columnconfigure(1, weight=0)
-        # Disable transport buttons initially
-        for btn in (self.transport_frame.start_btn, self.transport_frame.pause_btn, self.transport_frame.stop_btn):
-            btn.config(state=tk.DISABLED)
+        self._disable_transport_buttons()
 
-        # Controls frame (below device and transport, full width)
+    def _create_controls_and_sequencer(self) -> None:
+        """Create controls panel and sequencer area."""
         self.content_frame = ttk.LabelFrame(
             self.main_frame,
             text="Controls",
@@ -120,12 +130,39 @@ class MidiUI:
         self.transport_frame.add_start_callback(self.sequencer_frame.engine.start)
         self.transport_frame.add_stop_callback(self.sequencer_frame.engine.stop)
 
-        # Status bar
+    def _create_status_bar(self) -> None:
+        """Create bottom status bar."""
         self.status_bar = StatusBar(self.main_frame, initial_text="Ready", initial_color="blue")
         self.status_bar.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E))
-        
-        # Window close handler
-        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+    def _disable_transport_buttons(self) -> None:
+        """Disable transport controls while no device is connected."""
+        if self.transport_frame:
+            for btn in (self.transport_frame.start_btn, self.transport_frame.pause_btn, self.transport_frame.stop_btn):
+                btn.config(state=tk.DISABLED)
+
+    def _enable_transport_buttons(self) -> None:
+        """Enable transport controls after device connection."""
+        if self.transport_frame:
+            for btn in (self.transport_frame.start_btn, self.transport_frame.pause_btn, self.transport_frame.stop_btn):
+                btn.config(state=tk.NORMAL)
+
+    def _set_panels_midi_messages(self, midi_messages: Optional[MidiMessages]) -> None:
+        """Inject or clear MidiMessages in all dependent panels."""
+        if self.control_panel:
+            self.control_panel.set_midi_messages(midi_messages)
+        if self.sequencer_frame:
+            self.sequencer_frame.set_midi_messages(midi_messages)
+
+    def _apply_channel_to_panels(self, channel: Optional[int]) -> None:
+        """Apply selected channel to dependent panels (convert to 0-based)."""
+        if channel is None:
+            return
+        channel_0_based = max(0, channel - 1)
+        if self.control_panel:
+            self.control_panel.set_channel(channel_0_based)
+        if self.sequencer_frame:
+            self.sequencer_frame.set_channel(channel_0_based)
     
     def _initialize_midi(self) -> None:
         """Initialize MIDI discoverer."""
@@ -195,20 +232,10 @@ class MidiUI:
             self.device_frame.set_device_name(device, connected=True)
             self._update_status(f"Connected to: {device}", "green")
             # Enable and wire up transport frame
-            from midi.transport import MidiTransport
             self.transport_frame.midi_transport = MidiTransport(self.midi_messages)
-            for btn in (self.transport_frame.start_btn, self.transport_frame.pause_btn, self.transport_frame.stop_btn):
-                btn.config(state=tk.NORMAL)
-            # Wire up control panel
-            if self.control_panel:
-                self.control_panel.set_midi_messages(self.midi_messages)
-                if channel is not None:
-                    self.control_panel.set_channel(max(0, channel - 1))  # convert to 0-based, clamp
-            # Wire up sequencer
-            if self.sequencer_frame:
-                self.sequencer_frame.set_midi_messages(self.midi_messages)
-                if channel is not None:
-                    self.sequencer_frame.set_channel(max(0, channel - 1))
+            self._enable_transport_buttons()
+            self._set_panels_midi_messages(self.midi_messages)
+            self._apply_channel_to_panels(channel)
             # Trigger onConnect hook for subclasses
             self.on_device_connected()
         except Exception as e:
@@ -225,13 +252,10 @@ class MidiUI:
             self.selected_device = None
             self.device_frame.set_device_name("No device selected", connected=False)
             self._update_status("Disconnected", "blue")
-            # Disconnect control panel
-            if self.control_panel:
-                self.control_panel.set_midi_messages(None)
-            # Disconnect sequencer
+            self._disable_transport_buttons()
+            self._set_panels_midi_messages(None)
             if self.sequencer_frame:
                 self.sequencer_frame.engine.stop()
-                self.sequencer_frame.set_midi_messages(None)
             # Trigger onDisconnect hook for subclasses
             self.on_device_disconnected()
         except Exception as e:

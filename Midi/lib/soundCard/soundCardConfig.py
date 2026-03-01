@@ -1,5 +1,5 @@
 import sounddevice as sd
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
 

@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable, Optional
+from typing import Callable
 from midi.ccParameters import PARAMETER_CATEGORIES
 
 
@@ -43,7 +43,7 @@ class ParameterTreeUi:
         for category in PARAMETER_CATEGORIES:
             self.tree.insert("", tk.END, iid=category, text=category, open=False)
 
-    def _on_tree_select(self, event) -> None:
+    def _on_tree_select(self, event=None) -> None:
         """Handle treeview selection and call on_select callback."""
         selected = self.tree.focus()
         if selected and selected in PARAMETER_CATEGORIES:

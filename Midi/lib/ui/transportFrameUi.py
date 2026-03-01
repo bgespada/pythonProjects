@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable
+from typing import Callable, Optional
 from midi.transport import MidiTransport
 
 class TransportFrameUi(ttk.LabelFrame):
@@ -8,26 +8,26 @@ class TransportFrameUi(ttk.LabelFrame):
     A reusable frame for MIDI transport controls (Start, Pause, Stop).
     Accepts a MidiTransport instance to send MIDI messages.
     """
-    def __init__(self, parent, midi_transport: MidiTransport, **kwargs):
+    def __init__(self, parent, midi_transport: Optional[MidiTransport], **kwargs):
         super().__init__(parent, text="Transport Controls", padding="4", **kwargs)
         self.midi_transport = midi_transport
         self._clock_running = False
         self._clock_job = None
-        self._start_callbacks: list[Callable] = []
-        self._stop_callbacks:  list[Callable] = []
+        self._start_callbacks: list[Callable[[], None]] = []
+        self._stop_callbacks: list[Callable[[], None]] = []
         self._build_ui()
         self.config(width=320, height=80)
         self.grid_propagate(False)
 
-    def add_start_callback(self, callback: Callable) -> None:
+    def add_start_callback(self, callback: Callable[[], None]) -> None:
         """Register a callback to be called when Start is pressed."""
         self._start_callbacks.append(callback)
 
-    def add_stop_callback(self, callback: Callable) -> None:
+    def add_stop_callback(self, callback: Callable[[], None]) -> None:
         """Register a callback to be called when Stop is pressed."""
         self._stop_callbacks.append(callback)
 
-    def _build_ui(self):
+    def _build_ui(self) -> None:
         # Label row (to match device frame)
         ttk.Label(self, text="Transport:", font=("Arial", 9)).grid(row=0, column=0, sticky=tk.W)
         # Empty label for alignment
@@ -62,7 +62,7 @@ class TransportFrameUi(ttk.LabelFrame):
         self.stop_btn = ttk.Button(button_frame, text="Stop", width=10, command=self._on_stop)
         self.stop_btn.grid(row=0, column=4)
 
-    def _on_tempo_change(self, event=None):
+    def _on_tempo_change(self, _event=None) -> None:
         try:
             tempo = int(self.tempo_var.get())
             tempo = max(30, min(300, tempo))
@@ -71,51 +71,50 @@ class TransportFrameUi(ttk.LabelFrame):
         except Exception as e:
             print(f"Failed to set tempo: {e}")
 
-    def _on_start(self):
+    def _on_start(self) -> None:
         if self.midi_transport:
             self.midi_transport.start()
             self._start_clock()
-        for cb in self._start_callbacks:
-            try:
-                cb()
-            except Exception as e:
-                print(f"Start callback error: {e}")
+        self._run_callbacks(self._start_callbacks, "Start")
 
-    def _on_pause(self):
+    def _on_pause(self) -> None:
         if self.midi_transport:
             self.midi_transport.continue_()  # MIDI has Continue, not Pause; can be customized
             # Optionally, keep clock running or pause it here
 
-    def _on_stop(self):
+    def _on_stop(self) -> None:
         if self.midi_transport:
             self.midi_transport.stop()
             self._stop_clock()
-        for cb in self._stop_callbacks:
-            try:
-                cb()
-            except Exception as e:
-                print(f"Stop callback error: {e}")
+        self._run_callbacks(self._stop_callbacks, "Stop")
 
-    def _start_clock(self):
+    def _start_clock(self) -> None:
         if not self._clock_running:
             self._clock_running = True
             self._schedule_clock()
 
-    def _stop_clock(self):
+    def _stop_clock(self) -> None:
         self._clock_running = False
         if self._clock_job is not None:
             self.after_cancel(self._clock_job)
             self._clock_job = None
 
-    def _schedule_clock(self):
+    def _schedule_clock(self) -> None:
         if not self._clock_running:
             return
         if self.midi_transport:
             self.midi_transport.clock()
         # Calculate interval based on tempo
-        bpm = self.tempo_var.get() if hasattr(self, 'tempo_var') else 120
+        bpm = self.tempo_var.get()
         clocks_per_beat = 24
         interval_ms = int(1000 * 60 / (bpm * clocks_per_beat))
         if interval_ms < 1:
             interval_ms = 1
         self._clock_job = self.after(interval_ms, self._schedule_clock)
+
+    def _run_callbacks(self, callbacks: list[Callable[[], None]], label: str) -> None:
+        for callback in callbacks:
+            try:
+                callback()
+            except Exception as e:
+                print(f"{label} callback error: {e}")

@@ -172,7 +172,6 @@ class MidiConfigFrameUi:
         self.config.default_velocity = self.velocity_var.get()
         self.config.default_octave = self.octave_var.get()
         self.config.note_off_mode = self.note_off_var.get()
-        self.config.note_off_mode = self.note_off_var.get()
         
         # Call callback if provided
         if self.on_config_changed:

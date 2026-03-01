@@ -36,16 +36,12 @@ class MidiMessages:
         Raises:
             Exception: If device connection fails
         """
-        output_error = None
-        input_error = None
-        
         # Try to open as output device if requested
         if self.device_type in ('output', 'both'):
             try:
                 self.output_port = mido.open_output(device)
                 print(f"Connected to MIDI output device: {device}")
             except Exception as e:
-                output_error = e
                 if self.device_type == 'output':
                     print(f"Warning: Could not open output port for {device}: {e}")
         
@@ -55,7 +51,6 @@ class MidiMessages:
                 self.input_port = mido.open_input(device)
                 print(f"Connected to MIDI input device: {device}")
             except Exception as e:
-                input_error = e
                 if self.device_type == 'input':
                     print(f"Warning: Could not open input port for {device}: {e}")
         
@@ -188,7 +183,7 @@ class MidiMessages:
         """Ensure ports are closed when object is destroyed."""
         try:
             self.close()
-        except:
+        except Exception:
             pass
     
     def __enter__(self):

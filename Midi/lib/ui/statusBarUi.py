@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from typing import Optional
 
 class StatusBar(ttk.Frame):
     """
@@ -17,7 +18,7 @@ class StatusBar(ttk.Frame):
     def set_info(self, message: str, color: str = "blue"):
         self.info_label.config(text=message, foreground=color)
 
-    def set_channel(self, channel: int = None, color: str = "gray"):
+    def set_channel(self, channel: Optional[int] = None, color: str = "gray"):
         if channel is not None:
             self.channel_label.config(text=f"MIDI Channel: {channel}", foreground=color)
         else:

@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Optional, Callable, Tuple, Dict
+from typing import Optional, Callable, Tuple
 from pathlib import Path
 import sys
 
@@ -293,7 +293,7 @@ class MidiDeviceSelectorUi:
 
         self.device_listbox.delete(0, tk.END)
 
-        device_type = self.device_filter.value if hasattr(self.device_filter, 'value') else self.device_filter.get()
+        device_type = self.device_filter.get()
 
         if device_type == 'input' or self.device_type == 'input':
             devices = self.discoverer.get_input_devices()

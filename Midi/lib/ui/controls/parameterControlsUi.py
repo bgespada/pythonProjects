@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Optional
 from midi.ccParameters import PARAMETER_CATEGORIES
 
 

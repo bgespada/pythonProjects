@@ -16,7 +16,7 @@ class ScaleTreeUi:
 
     ROOTS = list(ROOT_NOTES.keys())
 
-    def __init__(self, parent: tk.Widget, on_scale_select: Callable[[list, list], None]):
+    def __init__(self, parent: tk.Widget, on_scale_select: Callable[[list[int], list[str]], None]):
         """
         Args:
             parent: Parent tkinter widget.
@@ -86,13 +86,13 @@ class ScaleTreeUi:
                 self._iid_to_scale[scale_iid] = (family, scale_name)
                 self.tree.insert(fam_iid, tk.END, iid=scale_iid, text=scale_name)
 
-    def _on_tree_select(self, event) -> None:
+    def _on_tree_select(self, _event=None) -> None:
         selected = self.tree.focus()
         if selected in self._iid_to_scale:
             self._selected_family, self._selected_scale = self._iid_to_scale[selected]
             self._emit()
 
-    def _on_root_change(self, event=None) -> None:
+    def _on_root_change(self, _event=None) -> None:
         if self._selected_family and self._selected_scale:
             self._emit()
 

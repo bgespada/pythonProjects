@@ -77,8 +77,8 @@ class SequencerFrameUi(ttk.LabelFrame):
             command=self._on_velocity_change,
         )
         vel_spin.pack(side=tk.LEFT, padx=(4, 0))
-        vel_spin.bind("<Return>", lambda event: self._on_velocity_change())
-        vel_spin.bind("<FocusOut>", lambda event: self._on_velocity_change())
+        vel_spin.bind("<Return>", lambda _event: self._on_velocity_change())
+        vel_spin.bind("<FocusOut>", lambda _event: self._on_velocity_change())
         self._vel_var.trace_add("write", lambda *_: self._on_velocity_change())
 
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(
@@ -117,7 +117,7 @@ class SequencerFrameUi(ttk.LabelFrame):
     def _on_scale_select(self, notes: list[int], names: list[str]) -> None:
         self.piano_roll.set_scale(notes, names)
 
-    def _on_steps_change(self, event=None) -> None:
+    def _on_steps_change(self, _event=None) -> None:
         self.piano_roll.set_num_steps(self._steps_var.get())
 
     def _on_velocity_change(self) -> None:
