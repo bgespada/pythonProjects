@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from typing import Callable
-from midi.scales import SCALE_FAMILIES, ROOT_NOTES, generate_notes, note_name
+from midi.scales import SCALE_FAMILIES, ROOT_NOTES, generate_notes, note_name, MIN_MIDI_NOTE, MAX_MIDI_NOTE
 
 
 class ScaleTreeUi:
@@ -99,8 +99,8 @@ class ScaleTreeUi:
     def _emit(self) -> None:
         if not (self._selected_family and self._selected_scale):
             return
-        root_midi = ROOT_NOTES.get(self._root_var.get(), 48)
+        root_midi = ROOT_NOTES.get(self._root_var.get(), 0)
         intervals = SCALE_FAMILIES[self._selected_family][self._selected_scale]
-        notes = generate_notes(root_midi, intervals, octaves=2)
+        notes = generate_notes(root_midi, intervals, min_midi_note=MIN_MIDI_NOTE, max_midi_note=MAX_MIDI_NOTE)
         names = [note_name(n) for n in notes]
         self.on_scale_select(notes, names)

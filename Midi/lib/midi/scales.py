@@ -4,12 +4,14 @@ Each scale is a list of semitone intervals from the root note.
 """
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+MIN_MIDI_NOTE = 0
+MAX_MIDI_NOTE = 127
 
-# Root notes mapped to MIDI note numbers (octave 3, e.g. C3 = 48)
+# Root notes mapped to MIDI note numbers in octave -2 (C-2 = 0)
 ROOT_NOTES: dict[str, int] = {
-    "C": 48, "C#": 49, "D": 50, "D#": 51,
-    "E": 52, "F": 53, "F#": 54, "G": 55,
-    "G#": 56, "A": 57, "A#": 58, "B": 59,
+    "C": 0, "C#": 1, "D": 2, "D#": 3,
+    "E": 4, "F": 5, "F#": 6, "G": 7,
+    "G#": 8, "A": 9, "A#": 10, "B": 11,
 }
 
 # Scale families and their interval patterns (semitones from root)
@@ -42,28 +44,40 @@ SCALE_FAMILIES: dict[str, dict[str, list[int]]] = {
 
 
 def note_name(midi_note: int) -> str:
-    """Return human-readable note name for a MIDI note number (e.g. 60 → 'C4')."""
-    octave = midi_note // 12 - 1
+    """Return note name using the convention C-2 = MIDI note 0."""
+    octave = midi_note // 12 - 2
     name = NOTE_NAMES[midi_note % 12]
     return f"{name}{octave}"
 
 
-def generate_notes(root_midi: int, intervals: list[int], octaves: int = 2) -> list[int]:
+def generate_notes(
+    root_midi: int,
+    intervals: list[int],
+    min_midi_note: int = MIN_MIDI_NOTE,
+    max_midi_note: int = MAX_MIDI_NOTE,
+) -> list[int]:
     """
-    Generate a list of MIDI note numbers for the given scale.
+    Generate scale notes across a MIDI-note range.
 
     Args:
-        root_midi: MIDI note number of the root (e.g. 48 for C3).
+        root_midi: MIDI note number for root pitch class anchor (0..11 recommended).
         intervals: Semitone intervals from root defining the scale.
-        octaves: Number of octaves to generate (default 2).
+        min_midi_note: Lowest MIDI note to include.
+        max_midi_note: Highest MIDI note to include.
 
     Returns:
         List of MIDI note numbers in ascending order.
     """
-    notes = []
-    for oct in range(octaves):
-        for interval in intervals:
-            note = root_midi + oct * 12 + interval
-            if 0 <= note <= 127:
-                notes.append(note)
-    return notes
+    min_midi_note = max(MIN_MIDI_NOTE, min_midi_note)
+    max_midi_note = min(MAX_MIDI_NOTE, max_midi_note)
+    if min_midi_note > max_midi_note:
+        return []
+
+    normalized_intervals = {interval % 12 for interval in intervals}
+    root_pitch_class = root_midi % 12
+
+    return [
+        note
+        for note in range(min_midi_note, max_midi_note + 1)
+        if ((note - root_pitch_class) % 12) in normalized_intervals
+    ]
