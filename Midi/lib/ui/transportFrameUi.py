@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Optional, Callable
+from typing import Callable
 from midi.transport import MidiTransport
 
 class TransportFrameUi(ttk.LabelFrame):
@@ -50,6 +50,8 @@ class TransportFrameUi(ttk.LabelFrame):
             command=self._on_tempo_change
         )
         self.tempo_spinbox.grid(row=0, column=1, padx=(0, 8))
+        self.tempo_spinbox.bind("<Return>", self._on_tempo_change)
+        self.tempo_spinbox.bind("<FocusOut>", self._on_tempo_change)
 
         self.start_btn = ttk.Button(button_frame, text="Start", width=10, command=self._on_start)
         self.start_btn.grid(row=0, column=2, padx=(0, 2))
@@ -60,13 +62,14 @@ class TransportFrameUi(ttk.LabelFrame):
         self.stop_btn = ttk.Button(button_frame, text="Stop", width=10, command=self._on_stop)
         self.stop_btn.grid(row=0, column=4)
 
-    def _on_tempo_change(self):
-        tempo = self.tempo_var.get()
-        if self.midi_transport:
-            try:
-                self.midi_transport.set_global_tempo(tempo)
-            except Exception as e:
-                print(f"Failed to set tempo: {e}")
+    def _on_tempo_change(self, event=None):
+        try:
+            tempo = int(self.tempo_var.get())
+            tempo = max(30, min(300, tempo))
+            self.tempo_var.set(tempo)
+            MidiTransport.set_global_tempo(tempo)
+        except Exception as e:
+            print(f"Failed to set tempo: {e}")
 
     def _on_start(self):
         if self.midi_transport:

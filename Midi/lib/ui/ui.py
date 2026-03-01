@@ -14,6 +14,8 @@ from soundCard.midiDiscoverer import MidiDiscoverer
 from midi.midiMessages import MidiMessages
 from .midiDeviceSelectorUi import MidiDeviceSelectorUi
 from .deviceSelectionFrameUi import DeviceSelectionFrameUi
+from .controls import ControlPanelUi
+from .sequencer import SequencerFrameUi
 
 
 class MidiUI:
@@ -39,8 +41,8 @@ class MidiUI:
         self.status_bar: Optional[StatusBar] = None
         self.main_frame: Optional[ttk.Frame] = None
         self.device_frame: Optional[DeviceSelectionFrameUi] = None
-        self.control_panel = None
-        self.sequencer_frame = None
+        self.control_panel: Optional[ControlPanelUi] = None
+        self.sequencer_frame: Optional[SequencerFrameUi] = None
         
         self._create_widgets()
         self._initialize_midi()
@@ -107,12 +109,10 @@ class MidiUI:
         self.content_frame.rowconfigure(0, weight=1)
         
         # Control panel (tree + parameter sliders)
-        from .controls import ControlPanelUi
         self.control_panel = ControlPanelUi(self.content_frame)
         self.control_panel.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         # Sequencer frame (below controls, full width)
-        from .sequencer import SequencerFrameUi
         self.sequencer_frame = SequencerFrameUi(self.main_frame)
         self.sequencer_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 6))
 
@@ -122,7 +122,7 @@ class MidiUI:
 
         # Status bar
         self.status_bar = StatusBar(self.main_frame, initial_text="Ready", initial_color="blue")
-        self.status_bar.grid(row=4, column=0, sticky=(tk.W, tk.E))
+        self.status_bar.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E))
         
         # Window close handler
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -247,7 +247,7 @@ class MidiUI:
         if self.status_bar:
             self.status_bar.set_info(message, color)
 
-    def _update_midi_channel(self, channel: int = None):
+    def _update_midi_channel(self, channel: Optional[int] = None):
         """
         Update the status bar MIDI channel section.
         Args:
