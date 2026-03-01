@@ -63,15 +63,30 @@ class MidiUI:
         )
         title_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 15))
         
-        # Device selection frame
+
+        # Device selection frame (left)
         self.device_frame = DeviceSelectionFrameUi(
             parent=self.main_frame,
             on_select=self._on_select_device,
             on_disconnect=self._on_disconnect
         )
-        self.device_frame.frame.config(width=260)
+        self.device_frame.frame.config(width=260, height=80)
         self.device_frame.frame.grid_propagate(False)
         self.device_frame.grid(row=1, column=0, sticky=tk.W, pady=(0, 6))
+
+        # Transport frame (right), initially disabled
+        from .transportFrameUi import TransportFrameUi
+        self.transport_frame = TransportFrameUi(
+            parent=self.main_frame,
+            midi_transport=None
+        )
+        self.transport_frame.config(width=260, height=80)
+        self.transport_frame.grid_propagate(False)
+        self.transport_frame.grid(row=1, column=1, sticky=tk.W, pady=(0, 6))
+        self.main_frame.columnconfigure(1, weight=0)
+        # Disable transport buttons initially
+        for btn in (self.transport_frame.start_btn, self.transport_frame.pause_btn, self.transport_frame.stop_btn):
+            btn.config(state=tk.DISABLED)
         
         # Content frame (for subclasses to add custom widgets)
         self.content_frame = ttk.LabelFrame(
@@ -161,11 +176,14 @@ class MidiUI:
             # Connect to new device with specified mode
             self.midi_messages = MidiMessages(device, device_type=device_mode)
             self.selected_device = device
-            
             # Update UI
             self.device_frame.set_device_name(device, connected=True)
             self._update_status(f"Connected to: {device}", "green")
-            
+            # Enable and wire up transport frame
+            from midi.transport import MidiTransport
+            self.transport_frame.midi_transport = MidiTransport(self.midi_messages)
+            for btn in (self.transport_frame.start_btn, self.transport_frame.pause_btn, self.transport_frame.stop_btn):
+                btn.config(state=tk.NORMAL)
             # Trigger onConnect hook for subclasses
             self.on_device_connected()
         except Exception as e:
