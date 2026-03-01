@@ -3,8 +3,15 @@ from tkinter import ttk, filedialog, messagebox
 from .scaleTreeUi import ScaleTreeUi
 from .pianoRollUi import PianoRollUi
 from .sequencerEngine import SequencerEngine
-from .presets import PRESET_NAMES, build_preset
+from .presets import (
+    UTILITY_PRESET_NAMES,
+    MUSICAL_PRESET_NAMES,
+    MUSICAL_PRESET_SCALES,
+    MUSICAL_PRESET_STEPS,
+    build_preset,
+)
 from .patternStorage import save_pattern, load_pattern
+from midi.scales import SCALE_FAMILIES, ROOT_NOTES, generate_notes, note_name, MIN_MIDI_NOTE, MAX_MIDI_NOTE
 
 
 class SequencerFrameUi(ttk.LabelFrame):
@@ -30,6 +37,7 @@ class SequencerFrameUi(ttk.LabelFrame):
         self._current_note_names: list[str] = []
         self._build_ui()
         self._wire_engine()
+        self._apply_musical_preset()
 
     # ------------------------------------------------------------------
     # Public API
@@ -48,28 +56,12 @@ class SequencerFrameUi(ttk.LabelFrame):
     # ------------------------------------------------------------------
 
     def _build_ui(self) -> None:
-        self.columnconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
 
-        # ── Toolbar ──────────────────────────────────────────────────
+        # ── Global toolbar ───────────────────────────────────────────
         toolbar = ttk.Frame(self)
-        toolbar.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
-
-        ttk.Label(toolbar, text="Steps:").pack(side=tk.LEFT)
-        self._steps_var = tk.IntVar(value=16)
-        steps_cb = ttk.Combobox(
-            toolbar,
-            textvariable=self._steps_var,
-            values=self.STEP_OPTIONS,
-            width=4,
-            state="readonly",
-        )
-        steps_cb.pack(side=tk.LEFT, padx=(4, 0))
-        steps_cb.bind("<<ComboboxSelected>>", self._on_steps_change)
-
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(
-            side=tk.LEFT, padx=8, fill=tk.Y
-        )
+        toolbar.grid(row=0, column=0, sticky=tk.W, pady=(0, 4))
 
         ttk.Label(toolbar, text="Velocity:").pack(side=tk.LEFT)
         self._vel_var = tk.IntVar(value=100)
@@ -106,23 +98,6 @@ class SequencerFrameUi(ttk.LabelFrame):
             side=tk.LEFT, padx=8, fill=tk.Y
         )
 
-        ttk.Label(toolbar, text="Preset:").pack(side=tk.LEFT)
-        self._preset_var = tk.StringVar(value=PRESET_NAMES[0])
-        self._preset_combo = ttk.Combobox(
-            toolbar,
-            textvariable=self._preset_var,
-            values=PRESET_NAMES,
-            width=10,
-            state="readonly",
-        )
-        self._preset_combo.pack(side=tk.LEFT, padx=(4, 0))
-
-        ttk.Button(toolbar, text="Apply", command=self._apply_preset).pack(side=tk.LEFT, padx=(4, 0))
-
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(
-            side=tk.LEFT, padx=8, fill=tk.Y
-        )
-
         ttk.Button(toolbar, text="Save", command=self._save_pattern).pack(side=tk.LEFT)
         ttk.Button(toolbar, text="Load", command=self._load_pattern).pack(side=tk.LEFT, padx=(4, 0))
 
@@ -133,25 +108,105 @@ class SequencerFrameUi(ttk.LabelFrame):
             font=("Arial", 8),
         ).pack(side=tk.LEFT)
 
+        # ── Notebook with two approaches ──────────────────────────────
+        self._notebook = ttk.Notebook(self)
+        self._notebook.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self._notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+
+        self._step_tab = ttk.Frame(self._notebook)
+        self._musical_tab = ttk.Frame(self._notebook)
+        self._step_tab.columnconfigure(1, weight=1)
+        self._step_tab.rowconfigure(1, weight=1)
+        self._musical_tab.columnconfigure(0, weight=1)
+        self._musical_tab.rowconfigure(1, weight=1)
+
+        self._notebook.add(self._step_tab, text="Step Sequencer")
+        self._notebook.add(self._musical_tab, text="Musical Presets")
+
+        # ── Step Sequencer tab ───────────────────────────────────────
+        step_toolbar = ttk.Frame(self._step_tab)
+        step_toolbar.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
+
+        ttk.Label(step_toolbar, text="Steps:").pack(side=tk.LEFT)
+        self._steps_var = tk.IntVar(value=16)
+        steps_cb = ttk.Combobox(
+            step_toolbar,
+            textvariable=self._steps_var,
+            values=self.STEP_OPTIONS,
+            width=4,
+            state="readonly",
+        )
+        steps_cb.pack(side=tk.LEFT, padx=(4, 0))
+        steps_cb.bind("<<ComboboxSelected>>", self._on_steps_change)
+
+        ttk.Separator(step_toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=8, fill=tk.Y)
+
+        ttk.Label(step_toolbar, text="Utility Preset:").pack(side=tk.LEFT)
+        self._utility_preset_var = tk.StringVar(value=UTILITY_PRESET_NAMES[0])
+        self._utility_preset_combo = ttk.Combobox(
+            step_toolbar,
+            textvariable=self._utility_preset_var,
+            values=UTILITY_PRESET_NAMES,
+            width=12,
+            state="readonly",
+        )
+        self._utility_preset_combo.pack(side=tk.LEFT, padx=(4, 0))
+        ttk.Button(step_toolbar, text="Apply", command=self._apply_utility_preset).pack(side=tk.LEFT, padx=(4, 0))
+
         # ── Scale tree (left) ─────────────────────────────────────────
         self.scale_tree = ScaleTreeUi(
-            parent=self,
+            parent=self._step_tab,
             on_scale_select=self._on_scale_select,
         )
         self.scale_tree.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.W), padx=(0, 6))
 
         # ── Piano roll (right) ────────────────────────────────────────
-        self.piano_roll = PianoRollUi(parent=self, num_steps=16)
+        self.piano_roll = PianoRollUi(parent=self._step_tab, num_steps=16)
         self.piano_roll.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # ── Musical Presets tab ──────────────────────────────────────
+        musical_toolbar = ttk.Frame(self._musical_tab)
+        musical_toolbar.grid(row=0, column=0, sticky=tk.W, pady=(0, 4))
+
+        ttk.Label(musical_toolbar, text="Musical Preset:").pack(side=tk.LEFT)
+        self._musical_preset_var = tk.StringVar(value=MUSICAL_PRESET_NAMES[0])
+        self._musical_preset_combo = ttk.Combobox(
+            musical_toolbar,
+            textvariable=self._musical_preset_var,
+            values=MUSICAL_PRESET_NAMES,
+            width=24,
+            state="readonly",
+        )
+        self._musical_preset_combo.pack(side=tk.LEFT, padx=(4, 0))
+        self._musical_preset_combo.bind("<<ComboboxSelected>>", self._on_musical_preset_selected)
+        ttk.Button(musical_toolbar, text="Apply", command=self._apply_musical_preset).pack(side=tk.LEFT, padx=(4, 0))
+
+        ttk.Separator(musical_toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=8, fill=tk.Y)
+
+        ttk.Label(musical_toolbar, text="Steps:").pack(side=tk.LEFT)
+        self._musical_steps_var = tk.IntVar(value=MUSICAL_PRESET_STEPS.get(self._musical_preset_var.get(), 32))
+        ttk.Label(musical_toolbar, textvariable=self._musical_steps_var).pack(side=tk.LEFT, padx=(4, 0))
+
+        self.musical_piano_roll = PianoRollUi(parent=self._musical_tab, num_steps=32)
+        self.musical_piano_roll.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
     def _wire_engine(self) -> None:
         """Connect engine callbacks to piano roll and toolbar variables."""
-        self.engine.get_active_notes = self.piano_roll.get_active_notes_at_step
-        self.engine.get_step_length  = self.piano_roll.get_step_length
-        self.engine.get_step_gate = self.piano_roll.get_step_gate
-        self.engine.get_step_velocity = self.piano_roll.get_step_velocity
-        self.engine.get_num_steps    = lambda: self._steps_var.get()
+        self.engine.get_active_notes = lambda step: self._active_roll().get_active_notes_at_step(step)
+        self.engine.get_step_length = lambda step: self._active_roll().get_step_length(step)
+        self.engine.get_step_gate = lambda step: self._active_roll().get_step_gate(step)
+        self.engine.get_step_velocity = lambda step: self._active_roll().get_step_velocity(step)
+        self.engine.get_num_steps = lambda: self._active_steps_var().get()
         self.engine.on_step_change   = self._on_step_change
+
+    def _is_musical_tab_active(self) -> bool:
+        return str(self._notebook.select()) == str(self._musical_tab)
+
+    def _active_roll(self) -> PianoRollUi:
+        return self.musical_piano_roll if self._is_musical_tab_active() else self.piano_roll
+
+    def _active_steps_var(self) -> tk.IntVar:
+        return self._musical_steps_var if self._is_musical_tab_active() else self._steps_var
 
     # ------------------------------------------------------------------
     # Event handlers
@@ -184,21 +239,106 @@ class SequencerFrameUi(ttk.LabelFrame):
         except Exception:
             pass
 
-    def _apply_preset(self) -> None:
-        if not self._current_scale_notes:
+    def _apply_pattern_to_roll(
+        self,
+        preset_name: str,
+        piano_roll: PianoRollUi,
+        steps_var: tk.IntVar,
+        scale_notes: list[int],
+        note_names: list[str],
+        enforce_any_step_count: bool = False,
+    ) -> None:
+        if not scale_notes:
             messagebox.showinfo("Preset", "Select a scale first.")
             return
 
         pattern = build_preset(
-            name=self._preset_var.get(),
+            name=preset_name,
+            scale_notes=scale_notes,
+            note_names=note_names,
+            num_steps=steps_var.get(),
+        )
+
+        preset_steps = int(pattern.get("num_steps", steps_var.get()))
+        preset_steps = max(8, min(32, preset_steps))
+        if enforce_any_step_count or preset_steps in self.STEP_OPTIONS:
+            steps_var.set(preset_steps)
+
+        piano_roll.load_pattern(pattern)
+
+    def _apply_utility_preset(self) -> None:
+        if not self._current_scale_notes:
+            messagebox.showinfo("Preset", "Select a scale first.")
+            return
+        self._apply_pattern_to_roll(
+            preset_name=self._utility_preset_var.get(),
+            piano_roll=self.piano_roll,
+            steps_var=self._steps_var,
             scale_notes=self._current_scale_notes,
             note_names=self._current_note_names,
-            num_steps=self._steps_var.get(),
         )
-        self.piano_roll.load_pattern(pattern)
+
+    def _build_scale_for_musical_preset(self, preset_name: str) -> tuple[list[int], list[str]]:
+        scale_def = MUSICAL_PRESET_SCALES.get(preset_name)
+        if not scale_def:
+            return [], []
+        root = scale_def.get("root", "C")
+        family = scale_def.get("family", "Diatonic")
+        scale_name = scale_def.get("scale", "Natural Minor")
+
+        root_midi = ROOT_NOTES.get(root, 0)
+        intervals = SCALE_FAMILIES.get(family, {}).get(scale_name)
+        if not intervals:
+            return [], []
+
+        notes = generate_notes(
+            root_midi,
+            intervals,
+            min_midi_note=MIN_MIDI_NOTE,
+            max_midi_note=MAX_MIDI_NOTE,
+        )
+        names = [note_name(n) for n in notes]
+        return notes, names
+
+    def _apply_musical_preset(self) -> None:
+        preset_name = self._musical_preset_var.get()
+        notes, names = self._build_scale_for_musical_preset(preset_name)
+        if not notes:
+            messagebox.showerror("Preset", "Could not build scale for selected musical preset.")
+            return
+
+        # Keep step tab scale selection in sync visually (optional) while ensuring
+        # musical tab works without manual scale selection.
+        target_scale = MUSICAL_PRESET_SCALES.get(preset_name)
+        if target_scale:
+            self.scale_tree.set_scale_selection(
+                root=target_scale["root"],
+                family=target_scale["family"],
+                scale=target_scale["scale"],
+                emit=True,
+            )
+
+        self._apply_pattern_to_roll(
+            preset_name=preset_name,
+            piano_roll=self.musical_piano_roll,
+            steps_var=self._musical_steps_var,
+            scale_notes=notes,
+            note_names=names,
+            enforce_any_step_count=True,
+        )
+
+    def _on_musical_preset_selected(self, _event=None) -> None:
+        preset_name = self._musical_preset_var.get()
+        suggested_steps = MUSICAL_PRESET_STEPS.get(preset_name)
+        if suggested_steps is not None:
+            self._musical_steps_var.set(max(8, min(32, int(suggested_steps))))
+
+    def _on_tab_changed(self, _event=None) -> None:
+        self.piano_roll.clear_highlight()
+        self.musical_piano_roll.clear_highlight()
 
     def _save_pattern(self) -> None:
-        pattern = self.piano_roll.export_pattern()
+        pattern = self._active_roll().export_pattern()
         file_path = filedialog.asksaveasfilename(
             title="Save Sequencer Pattern",
             defaultextension=".json",
@@ -222,18 +362,29 @@ class SequencerFrameUi(ttk.LabelFrame):
 
         try:
             pattern = load_pattern(file_path)
-            loaded_steps = int(pattern.get("num_steps", self._steps_var.get()))
+            steps_var = self._active_steps_var()
+            roll = self._active_roll()
+            loaded_steps = int(pattern.get("num_steps", steps_var.get()))
             loaded_steps = max(8, min(32, loaded_steps))
             if loaded_steps in self.STEP_OPTIONS:
-                self._steps_var.set(loaded_steps)
-            self.piano_roll.load_pattern(pattern)
-            self._current_scale_notes = list(pattern.get("scale_notes", self._current_scale_notes))
-            self._current_note_names = list(pattern.get("note_names", self._current_note_names))
+                steps_var.set(loaded_steps)
+            roll.load_pattern(pattern)
+
+            # Keep step-sequencer scale context updated from loaded content.
+            if not self._is_musical_tab_active():
+                self._current_scale_notes = list(pattern.get("scale_notes", self._current_scale_notes))
+                self._current_note_names = list(pattern.get("note_names", self._current_note_names))
         except Exception as e:
             messagebox.showerror("Load Error", f"Could not load pattern: {e}")
 
     def _on_step_change(self, step: int) -> None:
         if step < 0:
             self.piano_roll.clear_highlight()
+            self.musical_piano_roll.clear_highlight()
         else:
-            self.piano_roll.highlight_step(step)
+            if self._is_musical_tab_active():
+                self.musical_piano_roll.highlight_step(step)
+                self.piano_roll.clear_highlight()
+            else:
+                self.piano_roll.highlight_step(step)
+                self.musical_piano_roll.clear_highlight()

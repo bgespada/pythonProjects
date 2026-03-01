@@ -26,6 +26,7 @@ class ScaleTreeUi:
         self._selected_family: str | None = None
         self._selected_scale: str | None = None
         self._iid_to_scale: dict[str, tuple[str, str]] = {}
+        self._scale_to_iid: dict[tuple[str, str], str] = {}
 
         self.frame = ttk.Frame(parent)
 
@@ -73,6 +74,30 @@ class ScaleTreeUi:
     def pack(self, **kwargs) -> None:
         self.frame.pack(**kwargs)
 
+    def set_scale_selection(self, root: str, family: str, scale: str, emit: bool = True) -> bool:
+        """
+        Programmatically select root note and scale.
+
+        Returns:
+            True when selection was applied, otherwise False.
+        """
+        if root in self.ROOTS:
+            self._root_var.set(root)
+
+        scale_key = (family, scale)
+        scale_iid = self._scale_to_iid.get(scale_key)
+        if scale_iid is None:
+            return False
+
+        self._selected_family = family
+        self._selected_scale = scale
+        self.tree.selection_set(scale_iid)
+        self.tree.focus(scale_iid)
+        self.tree.see(scale_iid)
+        if emit:
+            self._emit()
+        return True
+
     # ------------------------------------------------------------------
     # Private
     # ------------------------------------------------------------------
@@ -84,6 +109,7 @@ class ScaleTreeUi:
             for scale_idx, scale_name in enumerate(scales):
                 scale_iid = f"sca_{fam_idx}_{scale_idx}"
                 self._iid_to_scale[scale_iid] = (family, scale_name)
+                self._scale_to_iid[(family, scale_name)] = scale_iid
                 self.tree.insert(fam_iid, tk.END, iid=scale_iid, text=scale_name)
 
     def _on_tree_select(self, _event=None) -> None:
