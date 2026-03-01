@@ -30,7 +30,7 @@ class MidiUI:
         """Initialize the main MIDI UI application."""
         self.root = tk.Tk()
         self.root.title("MIDI Device Control")
-        self.root.geometry("700x780")
+        self.root.geometry("700x870")
         self.root.resizable(False, False)
         
         # MIDI components
