@@ -115,6 +115,8 @@ class MidiUI:
             padding="10"
         )
         self.content_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 15))
+        self.content_frame.config(height=340)  # Set fixed height (adjust as needed)
+        self.content_frame.grid_propagate(False)  # Prevent frame from resizing to fit contents
         self.content_frame.columnconfigure(0, weight=1)
         self.content_frame.rowconfigure(0, weight=1)
         
