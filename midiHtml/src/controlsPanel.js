@@ -179,11 +179,18 @@ class ControlsPanel {
     nameEl.className = 'param-name';
     nameEl.textContent = `${p.name} (CC ${p.cc})`;
 
+    const wrap = document.createElement('div');
+    wrap.className = 'slider-wrap';
+
     const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = p.min;
-    slider.max = p.max;
+    slider.type  = 'range';
+    slider.min   = p.min;
+    slider.max   = p.max;
     slider.value = currentVal;
+    // Live fill via CSS custom property
+    slider.style.setProperty('--val', currentVal);
+    slider.style.setProperty('--min', p.min);
+    slider.style.setProperty('--max', p.max);
 
     const valEl = document.createElement('span');
     valEl.className = 'param-value';
@@ -191,12 +198,14 @@ class ControlsPanel {
 
     slider.addEventListener('input', () => {
       const v = parseInt(slider.value, 10);
+      slider.style.setProperty('--val', v);
       valEl.textContent = v;
       onChange(v);
     });
 
+    wrap.appendChild(slider);
     row.appendChild(nameEl);
-    row.appendChild(slider);
+    row.appendChild(wrap);
     row.appendChild(valEl);
     return row;
   }
