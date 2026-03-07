@@ -56,13 +56,13 @@ const SCALE_FAMILIES = {
  *
  * Returns Array of { midi, name } sorted ascending.
  */
-function generateScaleNotes(rootName, intervals, octaves = 3, startOctave = 4) {
+function generateScaleNotes(rootName, intervals, octaves = 2, startOctave = 3) {
   const rootOffset = NOTE_NAMES.indexOf(rootName);
   if (rootOffset === -1) return [];
   const notes = [];
   for (let oct = startOctave; oct < startOctave + octaves; oct++) {
     for (const interval of intervals) {
-      const midi = (oct + 1) * 12 + rootOffset + interval;
+      const midi = (oct + 2) * 12 + rootOffset + interval;
       if (midi >= 0 && midi <= 127) {
         const noteName = NOTE_NAMES[(rootOffset + interval) % 12];
         notes.push({ midi, name: `${noteName}${oct}` });

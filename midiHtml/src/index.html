@@ -72,6 +72,11 @@
         <label>Swing %:
           <input id="seq-swing" type="number" min="0" max="75" value="0" />
         </label>
+        <div class="octave-ctrl">
+          <button id="btn-oct-up">&#9650; Oct</button>
+          <span id="oct-display">Oct 3&#8211;4</span>
+          <button id="btn-oct-down">&#9660; Oct</button>
+        </div>
         <button id="btn-save-pattern">Save Pattern</button>
         <button id="btn-load-pattern">Load Pattern</button>
         <span class="seq-hint">Click cell: toggle | Drag VEL/GATE row: adjust value</span>
@@ -115,11 +120,6 @@
                 <option>A</option><option>A#</option><option>B</option>
               </select>
             </label>
-            <div class="octave-ctrl">
-              <button id="btn-oct-up">&#9650; Oct</button>
-              <span id="oct-display">Oct 4&#8211;5</span>
-              <button id="btn-oct-down">&#9660; Oct</button>
-            </div>
             <div id="scale-tree"></div>
           </div>
           <!-- Piano roll -->

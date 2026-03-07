@@ -399,32 +399,41 @@ class PianoRoll {
     this._build(); // rebuild canvases with new step count
   }
 
-  /** Update scale (regenerates active note set keeping nearest MIDI notes). */
+  /** Update scale — remaps active cells by MIDI note number (use when scale/root changes). */
   updateScale(newScaleNotes) {
-    // Collect currently active midi notes
-    const activeMidi = new Set();
-    for (let s = 0; s < this._numSteps; s++) {
-      this._activeNotes[s].forEach((rowIdx) => {
-        if (this._scaleNotes[rowIdx]) activeMidi.add(this._scaleNotes[rowIdx].midi);
-      });
-    }
+    // Collect per-step active MIDI notes
+    const activeByStep = this._activeNotes.map((set) =>
+      [...set]
+        .map((rowIdx) => (this._scaleNotes[rowIdx] ? this._scaleNotes[rowIdx].midi : null))
+        .filter((m) => m !== null)
+    );
 
     this._scaleNotes = newScaleNotes;
-    this._numRows = newScaleNotes.length;
+    this._numRows    = newScaleNotes.length;
 
-    // Rebuild active notes mapping midi -> new rowIdx
     const midiToRow = new Map(newScaleNotes.map((n, i) => [n.midi, i]));
-    this._activeNotes = Array.from({ length: this._numSteps }, () => new Set());
 
-    // For each step, remap midi notes to new rows
-    for (let s = 0; s < this._numSteps; s++) {
-      activeMidi.forEach((midi) => {
-        if (midiToRow.has(midi)) {
-          this._activeNotes[s].add(midiToRow.get(midi));
-        }
+    this._activeNotes = activeByStep.map((midiList) => {
+      const set = new Set();
+      midiList.forEach((midi) => {
+        if (midiToRow.has(midi)) set.add(midiToRow.get(midi));
       });
-    }
+      return set;
+    });
 
+    this._build();
+  }
+
+  /** Scroll octave — keeps row indices intact, only updates which MIDI notes the rows represent. */
+  scrollOctave(newScaleNotes) {
+    this._scaleNotes = newScaleNotes;
+    this._numRows    = newScaleNotes.length;
+    // Clamp any out-of-range row indices
+    this._activeNotes = this._activeNotes.map((set) => {
+      const clamped = new Set();
+      set.forEach((rowIdx) => { if (rowIdx < this._numRows) clamped.add(rowIdx); });
+      return clamped;
+    });
     this._build();
   }
 
@@ -486,7 +495,7 @@ class Sequencer {
     this._scaleName    = 'Major';
     this._scaleFamily  = 'Diatonic';
     this._scaleNotes   = [];
-    this._startOctave  = 4;  // scroll-able octave offset
+    this._startOctave  = 3;  // scroll-able octave offset (-2 = MIDI 0, default 3 = middle C)
 
     // Piano roll instances
     this._rollStep    = null;  // step sequencer tab
@@ -559,13 +568,19 @@ class Sequencer {
     this._updateScale();
   }
 
-  _updateScale() {
+  _updateScale(octaveScroll = false) {
     const intervals = (SCALE_FAMILIES[this._scaleFamily] || {})[this._scaleName];
     if (!intervals) return;
     this._scaleNotes = generateScaleNotes(this._rootName, intervals, 2, this._startOctave);
     const octDisplay = document.getElementById('oct-display');
-    if (octDisplay) octDisplay.textContent = `Oct ${this._startOctave}–${this._startOctave + 1}`;
-    if (this._rollStep) this._rollStep.updateScale(this._scaleNotes);
+    if (octDisplay) octDisplay.textContent = `Oct ${this._startOctave}\u2013${this._startOctave + 1}`;
+    if (octaveScroll) {
+      if (this._rollStep)    this._rollStep.scrollOctave(this._scaleNotes);
+      if (this._rollPresets) this._rollPresets.scrollOctave(this._scaleNotes);
+    } else {
+      if (this._rollStep)    this._rollStep.updateScale(this._scaleNotes);
+      if (this._rollPresets) this._rollPresets.updateScale(this._scaleNotes);
+    }
   }
 
   // ----------------------------------------------------------------
@@ -581,10 +596,10 @@ class Sequencer {
 
     // Octave scroll
     document.getElementById('btn-oct-up').addEventListener('click', () => {
-      if (this._startOctave < 8) { this._startOctave++; this._updateScale(); }
+      if (this._startOctave < 8) { this._startOctave++; this._updateScale(true); }
     });
     document.getElementById('btn-oct-down').addEventListener('click', () => {
-      if (this._startOctave > 0) { this._startOctave--; this._updateScale(); }
+      if (this._startOctave > -2) { this._startOctave--; this._updateScale(true); }
     });
 
     // Tab switching
@@ -628,7 +643,7 @@ class Sequencer {
       this._scaleName   = preset.scaleName;
       this._scaleFamily = preset.family;
       const intervals   = SCALE_FAMILIES[preset.family][preset.scaleName];
-      this._scaleNotes  = generateScaleNotes(preset.rootName, intervals);
+      this._scaleNotes  = generateScaleNotes(preset.rootName, intervals, 2, this._startOctave);
       if (!this._rollPresets) this._initPresetsRoll();
       else this._rollPresets.updateScale(this._scaleNotes);
       this._rollPresets.loadMusicalPreset({ ...preset, noteIndices: preset.noteIndices });
