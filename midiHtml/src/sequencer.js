@@ -63,8 +63,7 @@ class PianoRoll {
 
     this._currentStep = -1;   // highlighted during playback
 
-    this._build();
-    this._attachEvents();
+    this._build(); // _attachEvents() is called inside _build()
   }
 
   // ----------------------------------------------------------------
@@ -106,6 +105,7 @@ class PianoRoll {
     syncScroll(this._gridEl,  [this._headerEl, this._paramEl]);
 
     this._drawAll();
+    this._attachEvents();
   }
 
   _makeWrapper(cls) {
@@ -486,6 +486,7 @@ class Sequencer {
     this._scaleName    = 'Major';
     this._scaleFamily  = 'Diatonic';
     this._scaleNotes   = [];
+    this._startOctave  = 4;  // scroll-able octave offset
 
     // Piano roll instances
     this._rollStep    = null;  // step sequencer tab
@@ -561,7 +562,9 @@ class Sequencer {
   _updateScale() {
     const intervals = (SCALE_FAMILIES[this._scaleFamily] || {})[this._scaleName];
     if (!intervals) return;
-    this._scaleNotes = generateScaleNotes(this._rootName, intervals);
+    this._scaleNotes = generateScaleNotes(this._rootName, intervals, 2, this._startOctave);
+    const octDisplay = document.getElementById('oct-display');
+    if (octDisplay) octDisplay.textContent = `Oct ${this._startOctave}–${this._startOctave + 1}`;
     if (this._rollStep) this._rollStep.updateScale(this._scaleNotes);
   }
 
@@ -574,6 +577,14 @@ class Sequencer {
     document.getElementById('root-note').addEventListener('change', (e) => {
       this._rootName = e.target.value;
       this._updateScale();
+    });
+
+    // Octave scroll
+    document.getElementById('btn-oct-up').addEventListener('click', () => {
+      if (this._startOctave < 8) { this._startOctave++; this._updateScale(); }
+    });
+    document.getElementById('btn-oct-down').addEventListener('click', () => {
+      if (this._startOctave > 0) { this._startOctave--; this._updateScale(); }
     });
 
     // Tab switching
