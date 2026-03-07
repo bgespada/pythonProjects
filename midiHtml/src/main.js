@@ -200,6 +200,13 @@ controls = new ControlsPanel(midi);
 sequencer = new Sequencer(midi, transport);
 
 // ============================================================
+// CC Knobs
+// ============================================================
+
+const ccKnobs = new CcKnobsPanel(midi);
+document.getElementById('btn-cc-reset-all').addEventListener('click', () => ccKnobs.resetAll());
+
+// ============================================================
 // Initial status
 // ============================================================
 
