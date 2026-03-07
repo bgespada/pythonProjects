@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIDI Device Controller</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <h1 class="app-title">MIDI Device Controller</h1>
+
+    <!-- Top row: Device + Transport -->
+    <div class="top-row">
+      <!-- Device Selection -->
+      <section class="panel" id="device-panel">
+        <h2>Device</h2>
+        <div class="device-status">
+          <span class="label">Current Device:</span>
+          <span id="device-name" class="device-name disconnected">None</span>
+        </div>
+        <div class="btn-row">
+          <button id="btn-select-device">Select</button>
+          <button id="btn-disconnect" disabled>Disconnect</button>
+        </div>
+      </section>
+
+      <!-- Transport -->
+      <section class="panel" id="transport-panel">
+        <h2>Transport</h2>
+        <div class="transport-row">
+          <label for="tempo-input">Tempo (BPM):</label>
+          <input id="tempo-input" type="number" min="30" max="300" value="120" />
+        </div>
+        <div class="btn-row">
+          <button id="btn-start" disabled>&#9654; Start</button>
+          <button id="btn-pause" disabled>&#9646;&#9646; Pause</button>
+          <button id="btn-stop" disabled>&#9632; Stop</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Controls: Parameter Tree + Sliders -->
+    <section class="panel" id="controls-panel">
+      <h2>Controls</h2>
+      <div class="controls-layout">
+        <!-- Category tree -->
+        <div id="category-tree">
+          <ul id="category-list"></ul>
+        </div>
+        <div class="divider-v"></div>
+        <!-- Parameter controls -->
+        <div id="parameter-controls">
+          <div class="param-header">
+            <span id="param-category-title">Select a category</span>
+            <button id="btn-apply-defaults" disabled>Apply Defaults</button>
+          </div>
+          <div id="param-widgets"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sequencer -->
+    <section class="panel" id="sequencer-panel">
+      <h2>Sequencer</h2>
+
+      <!-- Sequencer global toolbar -->
+      <div class="seq-toolbar">
+        <label>Velocity:
+          <input id="seq-velocity" type="number" min="1" max="127" value="100" />
+        </label>
+        <label>Swing %:
+          <input id="seq-swing" type="number" min="0" max="75" value="0" />
+        </label>
+        <button id="btn-save-pattern">Save Pattern</button>
+        <button id="btn-load-pattern">Load Pattern</button>
+        <span class="seq-hint">Click cell: toggle | Drag VEL/GATE row: adjust value</span>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="step">Step Sequencer</button>
+        <button class="tab-btn" data-tab="presets">Musical Presets</button>
+      </div>
+
+      <!-- Step Sequencer Tab -->
+      <div id="tab-step" class="tab-content active">
+        <div class="step-toolbar">
+          <label>Steps:
+            <select id="step-count">
+              <option value="8">8</option>
+              <option value="16" selected>16</option>
+              <option value="32">32</option>
+            </select>
+          </label>
+          <label>Utility Preset:
+            <select id="utility-preset">
+              <option value="">Empty</option>
+              <option value="up_arp">Up Arp</option>
+              <option value="down_arp">Down Arp</option>
+              <option value="pulse_root">Pulse Root</option>
+            </select>
+          </label>
+          <button id="btn-apply-utility">Apply</button>
+        </div>
+
+        <div class="step-content">
+          <!-- Scale selector -->
+          <div id="scale-panel">
+            <label>Root:
+              <select id="root-note">
+                <option>C</option><option>C#</option><option>D</option>
+                <option>D#</option><option>E</option><option>F</option>
+                <option>F#</option><option>G</option><option>G#</option>
+                <option>A</option><option>A#</option><option>B</option>
+              </select>
+            </label>
+            <div id="scale-tree"></div>
+          </div>
+          <!-- Piano roll -->
+          <div id="piano-roll-step" class="piano-roll-container"></div>
+        </div>
+      </div>
+
+      <!-- Musical Presets Tab -->
+      <div id="tab-presets" class="tab-content">
+        <div class="step-toolbar">
+          <label>Musical Preset:
+            <select id="musical-preset">
+              <option value="valkyries">Ride of the Valkyries</option>
+              <option value="imperial">Imperial March (Inspired)</option>
+            </select>
+          </label>
+          <button id="btn-apply-musical">Apply</button>
+          <span id="preset-steps-label"></span>
+        </div>
+        <div id="piano-roll-presets" class="piano-roll-container"></div>
+      </div>
+    </section>
+
+    <!-- Status Bar -->
+    <div id="status-bar">
+      <span id="status-info" class="status-info">Not connected</span>
+      <span id="status-channel" class="status-channel"></span>
+    </div>
+  </div>
+
+  <!-- Device Selector Modal -->
+  <div id="modal-overlay" class="hidden">
+    <div id="modal-device">
+      <h2>Select MIDI Device</h2>
+      <select id="device-list" size="8"></select>
+      <div class="midi-config">
+        <label>MIDI Channel:
+          <select id="cfg-channel">
+            <option value="-1">All Channels</option>
+            <option value="0">1</option><option value="1">2</option>
+            <option value="2">3</option><option value="3">4</option>
+            <option value="4">5</option><option value="5">6</option>
+            <option value="6">7</option><option value="7">8</option>
+            <option value="8">9</option><option value="9">10</option>
+            <option value="10">11</option><option value="11">12</option>
+            <option value="12">13</option><option value="13">14</option>
+            <option value="14">15</option><option value="15">16</option>
+          </select>
+        </label>
+        <label>Default Velocity: <span id="cfg-vel-val">64</span>
+          <input id="cfg-velocity" type="range" min="0" max="127" value="64" />
+        </label>
+        <label>Default Octave: <span id="cfg-oct-val">5</span>
+          <input id="cfg-octave" type="range" min="0" max="10" value="5" />
+        </label>
+        <label>Note Off Mode:
+          <select id="cfg-noteoff-mode">
+            <option value="note_off">note_off</option>
+            <option value="zero_velocity">note_on (zero velocity)</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-status" id="modal-status"></div>
+      <div class="btn-row">
+        <button id="btn-modal-refresh">Refresh</button>
+        <button id="btn-modal-select" disabled>Select</button>
+        <button id="btn-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="ccParameters.js"></script>
+  <script src="scales.js"></script>
+  <script src="midiDevice.js"></script>
+  <script src="transport.js"></script>
+  <script src="controlsPanel.js"></script>
+  <script src="sequencer.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
