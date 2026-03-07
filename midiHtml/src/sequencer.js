@@ -571,9 +571,9 @@ class Sequencer {
   _updateScale(octaveScroll = false) {
     const intervals = (SCALE_FAMILIES[this._scaleFamily] || {})[this._scaleName];
     if (!intervals) return;
-    this._scaleNotes = generateScaleNotes(this._rootName, intervals, 2, this._startOctave);
+    this._scaleNotes = generateScaleNotes(this._rootName, intervals, 5, this._startOctave);
     const octDisplay = document.getElementById('oct-display');
-    if (octDisplay) octDisplay.textContent = `Oct ${this._startOctave}\u2013${this._startOctave + 1}`;
+    if (octDisplay) octDisplay.textContent = `Oct ${this._startOctave}\u2013${this._startOctave + 4}`;
     if (octaveScroll) {
       if (this._rollStep)    this._rollStep.scrollOctave(this._scaleNotes);
       if (this._rollPresets) this._rollPresets.scrollOctave(this._scaleNotes);
@@ -643,7 +643,7 @@ class Sequencer {
       this._scaleName   = preset.scaleName;
       this._scaleFamily = preset.family;
       const intervals   = SCALE_FAMILIES[preset.family][preset.scaleName];
-      this._scaleNotes  = generateScaleNotes(preset.rootName, intervals, 2, this._startOctave);
+      this._scaleNotes  = generateScaleNotes(preset.rootName, intervals, 5, this._startOctave);
       if (!this._rollPresets) this._initPresetsRoll();
       else this._rollPresets.updateScale(this._scaleNotes);
       this._rollPresets.loadMusicalPreset({ ...preset, noteIndices: preset.noteIndices });
